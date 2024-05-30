@@ -1,0 +1,13 @@
+# Chalice local build output
+.chalice/deployed/
+.chalice/deployments/
+.chalice/venv/
+
+# Mac OS X hidden files
+.DS_Store
+
+# Pyhon byte-compiled / optimized files
+venv/
+__pycache__/
+*.py[cod]
+*$py.class

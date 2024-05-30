@@ -1,0 +1,35 @@
+{
+  "version": "2.0",
+  "app_name": "video-exploratorium-backend",
+  "automatic_layer": true,
+  "stages": {
+    "dev": {
+      "api_gateway_stage": "vidbot",
+      "lambda_memory_size": 1024,
+      "lambda_timeout": 720,
+      "manage_iam_role": false,
+      "iam_role_arn": "arn:aws:iam::746027525716:role/ZoharTest-Lambda_Role",
+      "environment_variables": {
+        "SERVICE_URL": "https://cdnapi-ev.kaltura.com"
+      },
+      "lambda_functions": {
+        "api_handler": {
+          "architecture": "arm64"
+        }
+      },
+      "tags": {
+        "Environment": "dev",
+        "Project": "VideoExploratorium"
+      },
+      "log_retention_in_days": 1,
+      "api_gateway_endpoint_type": "EDGE",
+      "timeout_settings": {
+        "connect_timeout": 300,
+        "read_timeout": 900
+      },
+      "websocket_api": {
+        "route_selection_expression": "$request.body.action"
+      }
+    }
+  }
+}
