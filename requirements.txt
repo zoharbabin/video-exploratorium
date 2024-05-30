@@ -1,0 +1,13 @@
+# backend/videos-analysis-chat/requirements.txt
+lxml
+python-dotenv==1.0.0
+chalice==1.27.0
+colorlog==6.8.2
+pydantic==2.7.1
+requests==2.32.2
+pydantic-settings>=2.1.0
+KalturaApiClient==20.7.0
+pydantic-prompter==0.1.33
+pydantic-prompter[bedrock]==0.1.33
+websockets==10.4
+Jinja2

@@ -1,0 +1,2 @@
+[console_scripts]
+chalice-http-toolkit = tools.chalice_http_toolkit:main

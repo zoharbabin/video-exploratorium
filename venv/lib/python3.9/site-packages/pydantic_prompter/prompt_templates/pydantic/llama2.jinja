@@ -1,0 +1,14 @@
+<s>[INST] <<SYS>>
+Act like a REST API that answers the question contained in <question> tags.
+Your response should be within a JSON markdown block in JSON format with the schema specified in the <json_schema> tags.
+
+<json_schema>
+{{ schema }}
+</json_schema>
+<</SYS>>
+
+<question>
+{{ question }}
+</question>
+
+```json\n
