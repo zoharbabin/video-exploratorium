@@ -1,9 +1,13 @@
 import json
+import time
 from chalicelib.utils import create_response, handle_error, send_error_message, send_progress, logger
 from chalicelib.kaltura_utils import fetch_videos, validate_ks
 from chalicelib.analyze import analyze_videos_ws
 from chalicelib.prompters import answer_question_pp
 from chalice import WebsocketDisconnectedError
+
+# Set to track processed request IDs
+processed_request_ids = set()
 
 def register_routes(app, cors_config):
     @app.route('/', methods=['GET'], cors=cors_config)
@@ -24,42 +28,76 @@ def register_routes(app, cors_config):
         return pid, ks
 
 def websocket_handler(event, app):
+    start_time = time.time()
     try:
         logger.debug(f"WebSocket event: {event}")
         message = json.loads(event.body)
-        action = message.get('action')
         request_id = message.get('request_id')
-        headers = message.get('headers', {})
 
-        logger.debug(f"Received message: {message}", extra={'connection_id': event.connection_id})
-
+        # Ignore timeout messages early
         if message.get('message') == "Endpoint request timed out":
             logger.info("Ignoring timeout message.")
             return
 
-        if action == 'get_videos':
-            pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
-            category_id = message.get('categoryId')
-            free_text = message.get('freeText')
-            videos = fetch_videos(ks, pid, category_id, free_text)
-            send_progress(app, event.connection_id, request_id, 'videos', videos)
+        # Check if the request_id has already been processed
+        if request_id in processed_request_ids:
+            logger.info(f"Ignoring duplicate request ID: {request_id}")
+            return
 
-        elif action == 'analyze_videos':
-            pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
-            selected_videos = message.get('selectedVideos', [])
-            analyze_videos_ws(app, event.connection_id, request_id, selected_videos, ks, pid)
+        # Add the request_id to the processed set
+        processed_request_ids.add(request_id)
 
-        elif action == 'ask_question':
-            pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
-            question = message.get('question')
-            analysis_results = message.get('analysisResults')
-            response = answer_question_pp(question=question, analysis_results=analysis_results)
-            send_progress(app, event.connection_id, request_id, 'answer', response.model_dump_json())
+        action = message.get('action')
+        headers = message.get('headers', {})
+
+        logger.debug(f"Received message: {message}", extra={'connection_id': event.connection_id})
+
+        try:
+            if action == 'get_videos':
+                fetch_start_time = time.time()
+                pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
+                fetch_auth_time = time.time()
+                category_id = message.get('categoryId')
+                free_text = message.get('freeText')
+                videos = fetch_videos(ks, pid, category_id, free_text)
+                fetch_videos_time = time.time()
+                logger.info(f"Auth time: {fetch_auth_time - fetch_start_time}s, Fetch videos time: {fetch_videos_time - fetch_auth_time}s")
+                send_progress(app, event.connection_id, request_id, 'videos', videos)
+
+            elif action == 'analyze_videos':
+                analyze_start_time = time.time()
+                pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
+                analyze_auth_time = time.time()
+                selected_videos = message.get('selectedVideos', [])
+                analyze_videos_ws(app, event.connection_id, request_id, selected_videos, ks, pid)
+                analyze_end_time = time.time()
+                logger.info(f"Auth time: {analyze_auth_time - analyze_start_time}s, Analyze videos time: {analyze_end_time - analyze_auth_time}s")
+
+            elif action == 'ask_question':
+                ask_start_time = time.time()
+                pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
+                ask_auth_time = time.time()
+                question = message.get('question')
+                analysis_results = message.get('analysisResults')
+                response = answer_question_pp(question=question, analysis_results=analysis_results)
+                ask_end_time = time.time()
+                logger.info(f"Auth time: {ask_auth_time - ask_start_time}s, Answer question time: {ask_end_time - ask_auth_time}s")
+                send_progress(app, event.connection_id, request_id, 'answer', response.model_dump_json())
+
+        finally:
+            # Ensure removal of the request_id from the processed set
+            processed_request_ids.discard(request_id)
+            end_time = time.time()
+            logger.info(f"Total time for request {request_id}: {end_time - start_time} seconds")
 
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", extra={'connection_id': event.connection_id})
         send_error_message(app, event.connection_id, request_id, str(e))
         handle_error(e)
+        # Ensure removal of the request_id from the processed set even on error
+        processed_request_ids.discard(request_id)
+        end_time = time.time()
+        logger.info(f"Total time for request {request_id} (with error): {end_time - start_time} seconds")
 
 def extract_and_validate_auth_ws(headers, app, connection_id, request_id):
     auth_header = headers.get('X-Authentication')
@@ -69,7 +107,10 @@ def extract_and_validate_auth_ws(headers, app, connection_id, request_id):
         raise ValueError('X-Authentication header is required')
 
     pid, ks = parse_auth_header(auth_header)
+    validate_start_time = time.time()
     if not validate_ks(ks, pid):
+        validate_end_time = time.time()
+        logger.info(f"Time taken to validate KS: {validate_end_time - validate_start_time} seconds")
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
         logger.error(f"Invalid Kaltura session (KS): {masked_ks}")
         send_error_message(app, connection_id, request_id, 'Invalid Kaltura session')

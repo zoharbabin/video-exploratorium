@@ -1,8 +1,12 @@
+import re
 import time
 import json
 import requests
 import traceback
+from lxml import etree
 from KalturaClient import KalturaClient, KalturaConfiguration
+from KalturaClient.Base import IKalturaLogger, KalturaParams, getXmlNodeFloat
+from KalturaClient.exceptions import KalturaClientException, KalturaException
 from KalturaClient.Plugins.Core import KalturaSessionType, KalturaFilterPager, KalturaMediaType, KalturaSessionInfo
 from KalturaClient.Plugins.Caption import KalturaCaptionAssetFilter, KalturaCaptionAssetOrderBy, KalturaLanguage
 from KalturaClient.Plugins.ElasticSearch import (
@@ -16,26 +20,98 @@ from chalicelib.config import config
 from chalicelib.utils import logger, send_progress
 from chalicelib.transcript_utils import chunk_transcript
 
+class KalturaLogger(IKalturaLogger):
+    def log(self, msg):
+        logger.debug(msg)
+
+class CustomKalturaClient(KalturaClient):
+    def __init__(self, config, max_retries=1, delay=1, backoff=1):
+        super().__init__(config)
+        self.max_retries = max_retries
+        self.delay = delay
+        self.backoff = backoff
+
+    def retry_on_exception(self, func, *args, **kwargs):
+        mtries, mdelay = self.max_retries, self.delay
+        while mtries > 1:
+            try:
+                return func(*args, **kwargs)
+            except (KalturaException, KalturaClientException) as error:
+                if self._is_non_retryable_error(error):
+                    raise  # Raise the error without retrying if it's non-retryable
+                msg = f"{str(error)}, Kaltura API retrying request in {mdelay} seconds..."
+                context = f'Function "{func.__name__}" failed on attempt {self.max_retries - mtries + 1} with args {args} and kwargs {kwargs}.'
+                self.log(f'retrying function due to error: {msg} Context: {context}')
+                time.sleep(mdelay)
+                mtries -= 1
+                mdelay *= self.backoff
+        return func(*args, **kwargs)  # retry one final time, if it fails again let the exception bubble up
+
+    def _is_non_retryable_error(self, error):
+        non_retryable_errors = ["INVALID_KS"]
+        if isinstance(error, KalturaException) or isinstance(error, KalturaClientException):
+            error_code = error.code
+            return error_code in non_retryable_errors
+        return False
+
+    def parsePostResult(self, postResult):
+        return self.retry_on_exception(self._parse_post_result, postResult)
+
+    def _parse_post_result(self, postResult):
+        try:
+            postResult = re.sub(self.DATA_CONTENT_REGEX, b'<dataContent></dataContent>', postResult)
+            self.log("removing dataContent tags to avoid utf8 decoding issues")
+            self.log("result (xml): %s" % postResult)
+            resultXml = etree.fromstring(postResult, parser=self.parser)
+        except etree.ParseError as e:
+            raise KalturaClientException(
+                f"Failed to parse XML: {str(e)}",
+                KalturaClientException.ERROR_INVALID_XML)
+
+        resultNode = resultXml.find('result')
+        if resultNode is None:
+            raise KalturaClientException(
+                'Could not find result node in response xml',
+                KalturaClientException.ERROR_RESULT_NOT_FOUND)
+
+        execTime = resultXml.find('executionTime')
+        if (execTime is not None):
+            self.executionTime = getXmlNodeFloat(execTime)
+
+        self.throwExceptionIfError(resultNode)
+
+        return resultNode
+
+    def doHttpRequest(self, url, params=KalturaParams(), files=None):
+        return self.retry_on_exception(super().doHttpRequest, url, params, files)
+
 def get_kaltura_client(ks, pid):
     config_kaltura = KalturaConfiguration(pid)
     config_kaltura.serviceUrl = config.service_url
-    client = KalturaClient(config_kaltura)
+    config_kaltura.setLogger(KalturaLogger())
+    client = CustomKalturaClient(config_kaltura, max_retries=1, delay=1, backoff=1)
     client.setKs(ks)
     return client
 
 def validate_ks(ks, pid):
     try:
+        start_time = time.time()
         client = get_kaltura_client(ks, pid)
+        client_creation_time = time.time()
         session_info: KalturaSessionInfo = client.session.get()
+        session_info_time = time.time()
         is_pid_valid = int(session_info.partnerId) - int(pid) == 0
         current_time = time.time()
         is_ks_not_expired = session_info.expiry > current_time
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
-        logger.debug(f"Validating Kaltura session: pid: {is_pid_valid} [{pid}/{session_info.partnerId}],  ks_expiry_valid: {is_ks_not_expired}, KS: {masked_ks}")
+        logger.debug(f"Validating Kaltura session: pid: {is_pid_valid} [{pid}/{session_info.partnerId}], ks_expiry_valid: {is_ks_not_expired} / masked_ks: {masked_ks}")
+        logger.info(f"Time taken: client creation {client_creation_time - start_time}s, session info {session_info_time - client_creation_time}s")
+
         return is_pid_valid and is_ks_not_expired
     except Exception as e:
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
         logger.error(f"Invalid Kaltura session (KS): {masked_ks}, Error: {e}")
+        logger.error(traceback.format_exc())
         return False
 
 def get_english_captions(entry_id, ks, pid):
