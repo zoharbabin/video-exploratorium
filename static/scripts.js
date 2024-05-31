@@ -66,6 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
         switch (message.stage) {
             case 'videos':
                 displayVideos(message.data);
+                stopLoadingIndicator(); 
                 break;
             case 'chunk_progress':
                 // Handle chunk progress if needed
@@ -78,11 +79,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             case 'completed':
                 displayFinalResults(message.data);
-                stopLoadingIndicator(); // Stop the loading indicator and revert button state
+                stopLoadingIndicator(); 
                 break;
             case 'error':
                 displayError(message.data);
-                stopLoadingIndicator(); // Stop the loading indicator and revert button state
+                stopLoadingIndicator(); 
                 break;
             default:
                 if (message.hasOwnProperty('stage')) {
