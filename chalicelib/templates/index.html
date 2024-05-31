@@ -1,114 +1,51 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div id="status" class="alert alert-info">Connecting to WebSocket...</div>
-<div class="container">
-    <div class="card">
-        <div class="card-header" onclick="toggleCard(this)">
-            <h3>
-                <span class="toggle-icon">&#9654;</span>
-                Search Videos
-            </h3>
-        </div>
-        <div class="card-body">
-            <div class="form-group d-flex align-items-center">
-                <input type="text" id="category-id-text-input" class="form-control mr-2" placeholder="Enter category ID">
-                <input type="text" id="free-text-input" class="form-control mr-2" placeholder="Enter free text">
-                <button id="get-videos-category-text-button" class="btn btn-primary">Search Videos</button>
+<section>
+    <div id="status" class="alert info">Connecting to WebSocket...</div>
+    <article>
+        <details>
+            <summary>Search Videos</summary>
+            <div class="grid">
+                <input type="text" id="category-id-text-input" placeholder="Enter category ID">
+                <input type="text" id="free-text-input" placeholder="Enter free text">
+                <button id="get-videos-category-text-button" class="primary">Search Videos</button>
             </div>
-        </div>
-    </div>
-
-    <div class="card mt-3">
-        <div class="card-header" onclick="toggleCard(this)">
-            <h3>
-                <span class="toggle-icon">&#9654;</span>
-                Analyze Videos
-            </h3>
-        </div>
-        <div class="card-body">
-            <div class="form-group d-flex align-items-center">
-                <input type="text" id="video-ids-input" class="form-control mr-2" placeholder="Enter video IDs (comma separated)">
-                <button id="analyze-videos-button" class="btn btn-primary">Analyze Videos</button>
+        </details>
+        <details>
+            <summary>Analyze Videos</summary>
+            <div class="grid">
+                <input type="text" id="video-ids-input" placeholder="Enter video IDs (comma separated)">
+                <button id="analyze-videos-button" class="primary">Analyze Videos</button>
             </div>
+        </details>
+        <div id="videos-card" style="display: none;">
+            <details open>
+                <summary>Videos</summary>
+                <ul id="video-list-items" class="list-group"></ul>
+            </details>
         </div>
-    </div>
-
-    <div class="card mt-5">
-        <div class="card-header" onclick="toggleCard(this)">
-            <h3>
-                <span class="toggle-icon">&#9654;</span>
-                Videos
-            </h3>
+        <div id="progress-section" style="display: none;">
+            <details open>
+                <summary>Analysis Progress</summary>
+                <progress id="progress-bar" max="100" value="0"></progress>
+                <div id="progress-insights"></div>
+            </details>
         </div>
-        <div class="card-body">
-            <ul id="video-list-items" class="list-group"></ul>
+        <div id="analysis-results" style="display: none;">
+            <details>
+                <summary>Combined Summary</summary>
+                <div id="combined-summary-content" class="content"></div>
+            </details>
+            <details id="cross-video-insights-card" style="display: none;">
+                <summary>Cross Video Insights</summary>
+                <div id="cross-video-insights-content" class="content"></div>
+            </details>
         </div>
-    </div>
-
-    <div id="progress-section" class="card mt-5" style="display: none;">
-        <div class="card-header" onclick="toggleCard(this)">
-            <h3>
-                <span class="toggle-icon">&#9654;</span>
-                Analysis Progress
-            </h3>
-        </div>
-        <div class="card-body">
-            <div class="progress">
-                <div id="progress-bar" class="progress-bar progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-            <div id="progress-insights" class="mt-3"></div>
-        </div>
-    </div>
-
-    <div id="analysis-results" style="display: none;">
-        <div class="card mt-5">
-            <div class="card-header" onclick="toggleCard(this)">
-                <h3>
-                    <span class="toggle-icon">&#9654;</span>
-                    Combined Summary
-                </h3>
-            </div>
-            <div class="card-body">
-                <div id="combined-summary-content" class="bg-dark text-white p-3 border rounded"></div>
-            </div>
-        </div>
-
-        <div class="card mt-5">
-            <div class="card-header" onclick="toggleCard(this)">
-                <h3>
-                    <span class="toggle-icon">&#9654;</span>
-                    Cross Video Insights
-                </h3>
-            </div>
-            <div class="card-body">
-                <div id="cross-video-insights-content" class="bg-dark text-white p-3 border rounded"></div>
-            </div>
-        </div>
-
-        <div class="card mt-5">
-            <div class="card-header" onclick="toggleCard(this)">
-                <h3>
-                    <span class="toggle-icon">&#9654;</span>
-                    Answer
-                </h3>
-            </div>
-            <div class="card-body">
-                <div id="answer-content" class="bg-dark text-white p-3 border rounded"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card mt-5">
-        <div class="card-header" onclick="toggleCard(this)">
-            <h3>
-                <span class="toggle-icon">&#9654;</span>
-                Errors
-            </h3>
-        </div>
-        <div class="card-body">
+        <details id="errors-card" style="display: none;">
+            <summary>Errors</summary>
             <ul id="error-list" class="list-group"></ul>
-        </div>
-    </div>
-</div>
+        </details>
+    </article>
+</section>
 {% endblock %}
