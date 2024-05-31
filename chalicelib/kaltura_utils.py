@@ -17,7 +17,7 @@ from KalturaClient.Plugins.ElasticSearch import (
     KalturaESearchCategoryEntryItem, KalturaESearchCategoryEntryFieldName, KalturaCategoryEntryStatus, KalturaESearchUnifiedItem
 )
 from chalicelib.config import config
-from chalicelib.utils import logger, send_progress
+from chalicelib.utils import logger, send_ws_message
 from chalicelib.transcript_utils import chunk_transcript
 
 class KalturaLogger(IKalturaLogger):

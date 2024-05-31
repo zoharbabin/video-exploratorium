@@ -2,7 +2,7 @@ import json
 import traceback
 from chalicelib.kaltura_utils import get_english_captions, get_json_transcript
 from chalicelib.prompters import analyze_chunk_pp, combine_chunk_analyses_pp, cross_video_insights_pp, VideoSummary, CrossVideoInsights
-from chalicelib.utils import logger, send_progress
+from chalicelib.utils import logger, send_ws_message
 
 def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
     try:
@@ -33,7 +33,7 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                         chunk_json = chunk_summary.model_dump_json()
                         logger.info(f"Chunk {index + 1}/{total_chunks} analysis result: {chunk_json[:200]}...{chunk_json[-200:]}")
                         chunk_summaries.append(chunk_summary)
-                        send_progress(app, connection_id, request_id, 'chunk_progress', {
+                        send_ws_message(app, connection_id, request_id, 'chunk_progress', {
                             'video_id': video_id,
                             'chunk_index': index + 1,
                             'total_chunks': total_chunks,
@@ -65,13 +65,13 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                             logger.info(f"Combined chunk analysis result for video ID {video_id}: {combined_summary_json[:500]}...{combined_summary_json[-500:]}")
                             all_analysis_results.append(combined_summary_dict)
                             all_transcripts.extend(segmented_transcripts)
-                            send_progress(app, connection_id, request_id, 'combined_summary', combined_summary_json)
+                            send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_json)
                         else:
                             logger.info(f"Only one chunk found for video ID {video_id}, skipping combining analysis.")
                             combined_summary_dict = chunk_summaries[0].model_dump()
                             all_analysis_results.append(combined_summary_dict)
                             all_transcripts.extend(segmented_transcripts)
-                            send_progress(app, connection_id, request_id, 'combined_summary', combined_summary_dict)
+                            send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_dict)
                     except Exception as e:
                         logger.error(f"Error during combining chunk analyses for video ID {video_id}: {e}")
                         logger.error(traceback.format_exc())
@@ -80,7 +80,7 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
         
         if not all_analysis_results:
             logger.error("No analysis results found.")
-            send_progress(app, connection_id, request_id, 'error', 'No analysis results found')
+            send_ws_message(app, connection_id, request_id, 'error', 'No analysis results found')
             return
 
         response = {
@@ -95,15 +95,15 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                 cross_video_insights_dict = cross_video_insights.model_dump()
                 logger.debug(f"Cross video insights result: {cross_video_insights_dict}")
                 response["cross_video_insights"] = cross_video_insights_dict
-                send_progress(app, connection_id, request_id, 'cross_video_insights', cross_video_insights_dict)
+                send_ws_message(app, connection_id, request_id, 'cross_video_insights', cross_video_insights_dict)
             except Exception as e:
                 logger.error(f"Error during cross video insights analysis: {e}")
                 logger.error(traceback.format_exc())
 
         logger.info("Video analysis complete")
-        send_progress(app, connection_id, request_id, 'completed', response)
+        send_ws_message(app, connection_id, request_id, 'completed', response)
 
     except Exception as e:
         logger.error(f"Error during video analysis: {e}")
         logger.error(traceback.format_exc())
-        send_progress(app, connection_id, request_id, 'error', str(e))
+        send_ws_message(app, connection_id, request_id, 'error', str(e))

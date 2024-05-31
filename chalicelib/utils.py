@@ -55,28 +55,24 @@ logging.getLogger('botocore').setLevel(logging.WARNING)
 
 sys.stdout.flush()
 
-def create_response(body, status_code=200, request=None):
-    headers = {'Content-Type': 'application/json'}
-    return Response(body=json.dumps(body), status_code=status_code, headers=headers)
-
-def handle_error(e, request=None):
-    extra = {'aws_request_id': getattr(request.context, 'aws_request_id', None) if request else None}
+def handle_error(e, websocket_api=None, connection_id=None, request_id=None):
+    extra = {'aws_request_id': None}
+    send_ws_error_message(websocket_api, connection_id, request_id, str(e))
     logger.error(f"Unhandled Exception: {e}", extra=extra)
     logger.error(traceback.format_exc(), extra=extra)  # Log the full traceback
-    return create_response({'error': str(e)}, status_code=500, request=request)
 
-def send_error_message(app, connection_id, request_id, error_message):
+def send_ws_error_message(websocket_api, connection_id, request_id, error_message):
     try:
         message = json.dumps({
             'request_id': request_id,
             'stage': 'error',
             'data': error_message
         })
-        app.websocket_api.send(connection_id, message)
+        websocket_api.send(connection_id, message)
     except WebsocketDisconnectedError:
         logger.error(f"Client {connection_id} disconnected", extra={'connection_id': connection_id})
 
-def send_progress(app, connection_id, request_id, stage, data):
+def send_ws_message(app, connection_id, request_id, stage, data):
     try:
         message = json.dumps({
             'request_id': request_id,

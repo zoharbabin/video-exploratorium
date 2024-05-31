@@ -1,10 +1,10 @@
 import json
 import time
-from chalicelib.utils import create_response, handle_error, send_error_message, send_progress, logger
+from chalicelib.utils import handle_error, send_ws_message, logger
 from chalicelib.kaltura_utils import fetch_videos, validate_ks
 from chalicelib.analyze import analyze_videos_ws
 from chalicelib.prompters import answer_question_pp
-from chalice import WebsocketDisconnectedError
+from chalice import Response
 
 # Set to track processed request IDs
 processed_request_ids = set()
@@ -13,7 +13,10 @@ def register_routes(app, cors_config):
     @app.route('/', methods=['GET'], cors=cors_config)
     def index():
         logger.info("GET / called")
-        return create_response({'hello': 'world'}, request=app.current_request)
+        return Response(
+            status_code=302,
+            headers={'Location': '/vidbot/'}
+        )
 
     def extract_and_validate_auth(request):
         auth_header = request.headers.get('X-Authentication')
@@ -55,18 +58,18 @@ def websocket_handler(event, app):
         try:
             if action == 'get_videos':
                 fetch_start_time = time.time()
-                pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
+                pid, ks = extract_and_validate_auth_ws(headers)
                 fetch_auth_time = time.time()
                 category_id = message.get('categoryId')
                 free_text = message.get('freeText')
                 videos = fetch_videos(ks, pid, category_id, free_text)
                 fetch_videos_time = time.time()
                 logger.info(f"Auth time: {fetch_auth_time - fetch_start_time}s, Fetch videos time: {fetch_videos_time - fetch_auth_time}s")
-                send_progress(app, event.connection_id, request_id, 'videos', videos)
+                send_ws_message(app, event.connection_id, request_id, 'videos', videos)
 
             elif action == 'analyze_videos':
                 analyze_start_time = time.time()
-                pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
+                pid, ks = extract_and_validate_auth_ws(headers)
                 analyze_auth_time = time.time()
                 selected_videos = message.get('selectedVideos', [])
                 analyze_videos_ws(app, event.connection_id, request_id, selected_videos, ks, pid)
@@ -75,14 +78,14 @@ def websocket_handler(event, app):
 
             elif action == 'ask_question':
                 ask_start_time = time.time()
-                pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
+                pid, ks = extract_and_validate_auth_ws(headers)
                 ask_auth_time = time.time()
                 question = message.get('question')
                 analysis_results = message.get('analysisResults')
                 response = answer_question_pp(question=question, analysis_results=analysis_results)
                 ask_end_time = time.time()
                 logger.info(f"Auth time: {ask_auth_time - ask_start_time}s, Answer question time: {ask_end_time - ask_auth_time}s")
-                send_progress(app, event.connection_id, request_id, 'answer', response.model_dump_json())
+                send_ws_message(app, event.connection_id, request_id, 'answer', response.model_dump_json())
 
         finally:
             # Ensure removal of the request_id from the processed set
@@ -92,18 +95,15 @@ def websocket_handler(event, app):
 
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", extra={'connection_id': event.connection_id})
-        send_error_message(app, event.connection_id, request_id, str(e))
-        handle_error(e)
-        # Ensure removal of the request_id from the processed set even on error
-        processed_request_ids.discard(request_id)
+        handle_error(e, app.websocket_api, event.connection_id, request_id)  # Use handle_error from utils.py
+        processed_request_ids.discard(request_id)  # Ensure removal of the request_id from the processed set even on error
         end_time = time.time()
         logger.info(f"Total time for request {request_id} (with error): {end_time - start_time} seconds")
 
-def extract_and_validate_auth_ws(headers, app, connection_id, request_id):
+def extract_and_validate_auth_ws(headers):
     auth_header = headers.get('X-Authentication')
     logger.debug(f"X-Authentication header: {auth_header}")
     if not auth_header:
-        send_error_message(app, connection_id, request_id, 'X-Authentication header is required')
         raise ValueError('X-Authentication header is required')
 
     pid, ks = parse_auth_header(auth_header)
@@ -113,22 +113,10 @@ def extract_and_validate_auth_ws(headers, app, connection_id, request_id):
         logger.info(f"Time taken to validate KS: {validate_end_time - validate_start_time} seconds")
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
         logger.error(f"Invalid Kaltura session (KS): {masked_ks}")
-        send_error_message(app, connection_id, request_id, 'Invalid Kaltura session')
         raise ValueError('Invalid Kaltura session')
 
     logger.debug(f"Validated Kaltura session for pid: {pid}")
     return pid, ks
-
-def send_error_message(app, connection_id, request_id, error_message):
-    try:
-        message = json.dumps({
-            'request_id': request_id,
-            'stage': 'error',
-            'data': error_message
-        })
-        app.websocket_api.send(connection_id, message)
-    except WebsocketDisconnectedError:
-        logger.error(f"Client {connection_id} disconnected", extra={'connection_id': connection_id})
 
 def parse_auth_header(auth_header):
     logger.debug(f"Parsing X-Authentication header: {auth_header}")
