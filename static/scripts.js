@@ -85,8 +85,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 stopLoadingIndicator(); // Stop the loading indicator and revert button state
                 break;
             default:
-                console.warn('Unknown message stage:', message.stage);
-                stopLoadingIndicator(); // Stop the loading indicator and revert button state
+                if (message.hasOwnProperty('stage')) {
+                    console.warn('Unhandled message stage sent on the websocket:', message.stage);
+                } else {
+                    console.warn('Unhandled message on the websocket:', message.message);
+                }
         }
     }
 
@@ -168,9 +171,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const li = document.createElement('li');
             li.innerText = `Error: ${error}`;
             errorList.appendChild(li);
-            document.getElementById('errors-card').style.display = 'block';
+            const errorsCard = document.getElementById('errors-card');
+            errorsCard.style.display = 'block';
+            errorsCard.open = true;  // Ensure the details element is expanded
         }
-    }
+    }    
 
     function showStatus(message, statusClass) {
         const statusElement = document.getElementById('status');

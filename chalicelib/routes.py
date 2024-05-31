@@ -1,5 +1,5 @@
 import json
-from chalicelib.utils import create_response, handle_error, send_progress, logger
+from chalicelib.utils import create_response, handle_error, send_error_message, send_progress, logger
 from chalicelib.kaltura_utils import fetch_videos, validate_ks
 from chalicelib.analyze import analyze_videos_ws
 from chalicelib.prompters import answer_question_pp
@@ -33,6 +33,10 @@ def websocket_handler(event, app):
 
         logger.debug(f"Received message: {message}", extra={'connection_id': event.connection_id})
 
+        if message.get('message') == "Endpoint request timed out":
+            logger.info("Ignoring timeout message.")
+            return
+
         if action == 'get_videos':
             pid, ks = extract_and_validate_auth_ws(headers, app, event.connection_id, request_id)
             category_id = message.get('categoryId')
@@ -54,6 +58,7 @@ def websocket_handler(event, app):
 
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", extra={'connection_id': event.connection_id})
+        send_error_message(app, event.connection_id, request_id, str(e))
         handle_error(e)
 
 def extract_and_validate_auth_ws(headers, app, connection_id, request_id):

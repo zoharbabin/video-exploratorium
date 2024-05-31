@@ -65,6 +65,17 @@ def handle_error(e, request=None):
     logger.error(traceback.format_exc(), extra=extra)  # Log the full traceback
     return create_response({'error': str(e)}, status_code=500, request=request)
 
+def send_error_message(app, connection_id, request_id, error_message):
+    try:
+        message = json.dumps({
+            'request_id': request_id,
+            'stage': 'error',
+            'data': error_message
+        })
+        app.websocket_api.send(connection_id, message)
+    except WebsocketDisconnectedError:
+        logger.error(f"Client {connection_id} disconnected", extra={'connection_id': connection_id})
+
 def send_progress(app, connection_id, request_id, stage, data):
     try:
         message = json.dumps({
