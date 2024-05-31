@@ -1,1 +1,13 @@
-/* Nothing here for now, placeholder */
+body>header .container>a {
+    margin: calc(var(--pico-spacing)* -.125) calc(var(--pico-spacing)* -.25);
+    padding: calc(var(--pico-spacing)* .125) calc(var(--pico-spacing)* .25);
+    border-radius: var(--pico-border-radius);
+}
+body>header .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+mark.status.progress {
+    color: var(--pico-ins-color);
+}

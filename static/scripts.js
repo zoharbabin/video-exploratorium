@@ -4,7 +4,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function connectWebSocket() {
         socket = new WebSocket('wss://fyocljsr02.execute-api.us-east-1.amazonaws.com/vidbot/');
-        
+        showStatus('Connecting to WebSocket...', 'progress');
+
         socket.onopen = function () {
             showStatus('Connected to the server', 'success');
         };
@@ -23,6 +24,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const message = JSON.parse(event.data);
             handleServerMessage(message);
         };
+    }
+
+    function showStatus(message, statusClass) {
+        const statusElement = document.getElementById('status');
+        if (statusElement) {
+            statusElement.innerText = message;
+            statusElement.className = `status ${statusClass}`;
+        }
     }
 
     connectWebSocket();
@@ -177,14 +186,6 @@ document.addEventListener("DOMContentLoaded", function () {
             errorsCard.open = true;  // Ensure the details element is expanded
         }
     }    
-
-    function showStatus(message, statusClass) {
-        const statusElement = document.getElementById('status');
-        if (statusElement) {
-            statusElement.innerText = message;
-            statusElement.className = `alert ${statusClass}`;
-        }
-    }
 
     function startLoadingIndicator(button) {
         currentButton = button;

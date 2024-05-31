@@ -1,50 +1,62 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<hgroup>
+    <h1>Video Expoloratorium</h1>
+    <p>
+        Use LLM to analyze videos and get insights. Make sure the URL params pid and ks are set. Search for videos, analyze them and get insights.
+    </p>
+</hgroup>
 <section>
-    <div id="status" class="alert info">Connecting to WebSocket...</div>
+    <mark id="status">...</mark>
     <article>
         <details>
             <summary>Search Videos</summary>
-            <div class="grid">
-                <input type="text" id="category-id-text-input" placeholder="Enter category ID">
-                <input type="text" id="free-text-input" placeholder="Enter free text">
-                <button id="get-videos-category-text-button">Search Videos</button>
+            <div role="search">
+                <input type="text" id="category-id-text-input" placeholder="Ancestor category ID">
+                <input type="text" id="free-text-input" placeholder="Or.. free text">
+                <button id="get-videos-category-text-button">Search</button>
             </div>
         </details>
+        <hr />
         <details>
             <summary>Analyze Videos</summary>
-            <div class="grid">
-                <input type="text" id="video-ids-input" placeholder="Enter video IDs (comma separated)">
-                <button id="analyze-videos-button">Analyze Videos</button>
+            <div role="group">
+                <input type="text" id="video-ids-input" placeholder="Entry IDs (comma separated)">
+                <button id="analyze-videos-button">Analyze</button>
             </div>
+            <hr />
         </details>
-        <div id="videos-card" style="display: none;">
-            <details open>
-                <summary>Videos</summary>
-                <ul id="video-list-items"></ul>
-            </details>
-        </div>
-        <div id="progress-section" style="display: none;">
-            <details open>
-                <summary>Analysis Progress</summary>
-                <progress id="progress-bar" max="100" value="0"></progress>
-                <div id="progress-insights"></div>
-            </details>
-        </div>
-        <div id="analysis-results" style="display: none;">
-            <details>
-                <summary>Combined Summary</summary>
-                <div id="combined-summary-content"></div>
-            </details>
-            <details id="cross-video-insights-card" style="display: none;">
-                <summary>Cross Video Insights</summary>
-                <div id="cross-video-insights-content"></div>
-            </details>
-        </div>
+        
+        <details id="videos-card" style="display: none;" open>
+            <summary>Videos</summary>
+            <ul id="video-list-items"></ul>
+            <hr />
+        </details>
+
+        <details id="progress-section" style="display: none;" open>
+            <summary>Analysis Progress</summary>
+            <progress id="progress-bar" max="100" value="0"></progress>
+            <div id="progress-insights"></div>
+            <hr />
+        </details>
+        
+        <details id="analysis-results" style="display: none;">
+            <summary>Combined Summary</summary>
+            <div id="combined-summary-content"></div>
+            <hr />
+        </details>
+        
+        <details id="cross-video-insights-card" style="display: none;">
+            <summary>Cross Video Insights</summary>
+            <div id="cross-video-insights-content"></div>
+            <hr />
+        </details>
+        
         <details id="errors-card" style="display: none;">
             <summary>Errors</summary>
             <ul id="error-list"></ul>
+            <hr />
         </details>
     </article>
 </section>
