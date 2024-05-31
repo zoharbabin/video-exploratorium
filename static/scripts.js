@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     let socket;
-    let totalChunks = 0;
-    let processedChunks = 0;
+    let currentButton = null; // Track the current button being processed
 
     function connectWebSocket() {
         socket = new WebSocket('wss://fyocljsr02.execute-api.us-east-1.amazonaws.com/vidbot/');
@@ -36,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
     }
 
-    function sendMessage(action, data) {
+    function sendMessage(action, data, button) {
         const { pid, ks } = getUrlParams();
         if (!pid || !ks) {
             console.error('PID and KS parameters are required');
@@ -51,10 +50,11 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             ...data
         };
+
         if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(message));
             showStatus('Message sent to the server...', 'info');
-            startLoadingIndicator(); // Start the loading indicator
+            startLoadingIndicator(button); // Start the loading indicator and change button state
         } else {
             console.error('WebSocket is not open. Ready state: ' + socket.readyState);
         }
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 displayVideos(message.data);
                 break;
             case 'chunk_progress':
-                updateProgress(message.data);
+                // Handle chunk progress if needed
                 break;
             case 'combined_summary':
                 displayCombinedSummary(message.data);
@@ -78,15 +78,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             case 'completed':
                 displayFinalResults(message.data);
-                stopLoadingIndicator(); // Stop the loading indicator
+                stopLoadingIndicator(); // Stop the loading indicator and revert button state
                 break;
             case 'error':
                 displayError(message.data);
-                stopLoadingIndicator(); // Stop the loading indicator
+                stopLoadingIndicator(); // Stop the loading indicator and revert button state
                 break;
             default:
                 console.warn('Unknown message stage:', message.stage);
-                stopLoadingIndicator(); // Stop the loading indicator
+                stopLoadingIndicator(); // Stop the loading indicator and revert button state
         }
     }
 
@@ -96,12 +96,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 v = c === 'x' ? r : (r & 0x3) | 0x8;
             return v.toString(16);
         });
-    }
-
-    function formatTime(seconds) {
-        const date = new Date(0);
-        date.setSeconds(seconds);
-        return date.toISOString().substr(11, 8);
     }
 
     function displayVideos(videos) {
@@ -121,34 +115,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 videoList.appendChild(li);
             });
             document.getElementById('videos-card').style.display = 'block';
-        }
-    }
-
-    function startProgressBar(total) {
-        const progressBar = document.getElementById('progress-bar');
-        progressBar.value = 0;
-        progressBar.max = total;
-        progressBar.removeAttribute('hidden');
-        totalChunks = total;
-        processedChunks = 0;
-    }
-
-    function updateProgress(data) {
-        const progressInsights = document.getElementById('progress-insights');
-        const progressBar = document.getElementById('progress-bar');
-
-        if (data.chunk_summary) {
-            const insight = document.createElement('div');
-            insight.innerHTML = `
-                <strong>Video ID:</strong> ${data.video_id}<br>
-                <strong>Chunk:</strong> ${data.chunk_index} of ${data.total_chunks}<br>
-                <strong>Summary:</strong> ${data.chunk_summary.full_summary || 'N/A'}<br>`;
-            progressInsights.appendChild(insight);
-
-            processedChunks += 1;
-            if (totalChunks && processedChunks <= totalChunks) {
-                progressBar.value = processedChunks;
-            }
         }
     }
 
@@ -180,10 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function displayFinalResults(data) {
-        const progressSection = document.getElementById('progress-section');
         const analysisResults = document.getElementById('analysis-results');
-
-        progressSection.style.display = 'none';
         analysisResults.style.display = 'block';
 
         const combinedSummaryContent = document.getElementById('combined-summary-content');
@@ -203,7 +166,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const errorList = document.getElementById('error-list');
         if (errorList) {
             const li = document.createElement('li');
-            li.classList.add('list-group-item', 'list-group-item-danger');
             li.innerText = `Error: ${error}`;
             errorList.appendChild(li);
             document.getElementById('errors-card').style.display = 'block';
@@ -218,28 +180,31 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function startLoadingIndicator() {
-        const statusElement = document.getElementById('status');
-        if (statusElement) {
-            statusElement.classList.add('loading');
+    function startLoadingIndicator(button) {
+        currentButton = button;
+        if (currentButton) {
+            currentButton.setAttribute('aria-busy', 'true');
+            currentButton.textContent = 'Please wait…';
         }
     }
 
     function stopLoadingIndicator() {
-        const statusElement = document.getElementById('status');
-        if (statusElement) {
-            statusElement.classList.remove('loading');
+        if (currentButton) {
+            currentButton.removeAttribute('aria-busy');
+            currentButton.textContent = currentButton.originalText;
+            currentButton = null;
         }
     }
 
     const getVideosCategoryTextButton = document.getElementById('get-videos-category-text-button');
     if (getVideosCategoryTextButton) {
+        getVideosCategoryTextButton.originalText = getVideosCategoryTextButton.textContent;
         getVideosCategoryTextButton.addEventListener('click', function () {
             const categoryIdInput = document.getElementById('category-id-text-input');
             const categoryId = categoryIdInput.value === "" ? null : categoryIdInput.value;
             const freeTextInput = document.getElementById('free-text-input');
             const freeText = freeTextInput.value === "" ? null : freeTextInput.value;
-            sendMessage('get_videos', { categoryId, freeText });
+            sendMessage('get_videos', { categoryId, freeText }, getVideosCategoryTextButton);
         });
     } else {
         console.error('Search videos button not found');
@@ -247,12 +212,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const analyzeVideosButton = document.getElementById('analyze-videos-button');
     if (analyzeVideosButton) {
+        analyzeVideosButton.originalText = analyzeVideosButton.textContent;
         analyzeVideosButton.addEventListener('click', function () {
             const videoIdsInput = document.getElementById('video-ids-input');
             if (videoIdsInput) {
                 const selectedVideos = videoIdsInput.value.split(',').map(id => id.trim());
-                startProgressBar(selectedVideos.length); // Start the progress bar animation immediately
-                sendMessage('analyze_videos', { selectedVideos });
+                sendMessage('analyze_videos', { selectedVideos }, analyzeVideosButton);
             } else {
                 console.error('Video IDs input not found');
             }

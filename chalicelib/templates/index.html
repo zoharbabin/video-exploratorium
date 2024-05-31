@@ -9,20 +9,20 @@
             <div class="grid">
                 <input type="text" id="category-id-text-input" placeholder="Enter category ID">
                 <input type="text" id="free-text-input" placeholder="Enter free text">
-                <button id="get-videos-category-text-button" class="primary">Search Videos</button>
+                <button id="get-videos-category-text-button">Search Videos</button>
             </div>
         </details>
         <details>
             <summary>Analyze Videos</summary>
             <div class="grid">
                 <input type="text" id="video-ids-input" placeholder="Enter video IDs (comma separated)">
-                <button id="analyze-videos-button" class="primary">Analyze Videos</button>
+                <button id="analyze-videos-button">Analyze Videos</button>
             </div>
         </details>
         <div id="videos-card" style="display: none;">
             <details open>
                 <summary>Videos</summary>
-                <ul id="video-list-items" class="list-group"></ul>
+                <ul id="video-list-items"></ul>
             </details>
         </div>
         <div id="progress-section" style="display: none;">
@@ -35,16 +35,16 @@
         <div id="analysis-results" style="display: none;">
             <details>
                 <summary>Combined Summary</summary>
-                <div id="combined-summary-content" class="content"></div>
+                <div id="combined-summary-content"></div>
             </details>
             <details id="cross-video-insights-card" style="display: none;">
                 <summary>Cross Video Insights</summary>
-                <div id="cross-video-insights-content" class="content"></div>
+                <div id="cross-video-insights-content"></div>
             </details>
         </div>
         <details id="errors-card" style="display: none;">
             <summary>Errors</summary>
-            <ul id="error-list" class="list-group"></ul>
+            <ul id="error-list"></ul>
         </details>
     </article>
 </section>

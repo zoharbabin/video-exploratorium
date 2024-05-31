@@ -30,10 +30,12 @@ def validate_ks(ks, pid):
         is_pid_valid = int(session_info.partnerId) - int(pid) == 0
         current_time = time.time()
         is_ks_not_expired = session_info.expiry > current_time
-        logger.debug(f"Validating Kaltura session: pid: {is_pid_valid} [{pid}/{session_info.partnerId}],  ks_expiry_valid: {is_ks_not_expired}")
+        masked_ks = f"{ks[:5]}...{ks[-5:]}"
+        logger.debug(f"Validating Kaltura session: pid: {is_pid_valid} [{pid}/{session_info.partnerId}],  ks_expiry_valid: {is_ks_not_expired}, KS: {masked_ks}")
         return is_pid_valid and is_ks_not_expired
     except Exception as e:
-        logger.error(f"Invalid Kaltura session (KS): {e}")
+        masked_ks = f"{ks[:5]}...{ks[-5:]}"
+        logger.error(f"Invalid Kaltura session (KS): {masked_ks}, Error: {e}")
         return False
 
 def get_english_captions(entry_id, ks, pid):
