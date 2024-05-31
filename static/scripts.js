@@ -161,19 +161,98 @@ document.addEventListener("DOMContentLoaded", function () {
     function displayFinalResults(data) {
         const analysisResults = document.getElementById('analysis-results');
         analysisResults.style.display = 'block';
-
+    
         const combinedSummaryContent = document.getElementById('combined-summary-content');
-        combinedSummaryContent.innerHTML = '';
+        combinedSummaryContent.innerHTML = ''; // Clear any previous content
+    
         data.individual_results.forEach(result => {
-            displayCombinedSummary(result);
+            let resultHTML = `
+                <h4>Video Entry: ${result.entry_id}</h4>
+                <p><strong>Full Summary:</strong> ${result.full_summary}</p>
+            `;
+    
+            if (result.sections && result.sections.length > 0) {
+                resultHTML += '<h5>Sections</h5><ul>';
+                result.sections.forEach(section => {
+                    resultHTML += `
+                        <li>
+                            <strong>${section.title}</strong>: ${section.summary}
+                            <br><small>Start: ${section.start_sentence} (Time: ${section.start_time}s)</small>
+                        </li>
+                    `;
+                });
+                resultHTML += '</ul>';
+            }
+    
+            if (result.insights && result.insights.length > 0) {
+                resultHTML += '<h5>Insights</h5><ul>';
+                result.insights.forEach(insight => {
+                    resultHTML += `<li>${insight.text} (Time: ${insight.start_time}s)</li>`;
+                });
+                resultHTML += '</ul>';
+            }
+    
+            if (result.people && result.people.length > 0) {
+                resultHTML += '<h5>People</h5><ul>';
+                result.people.forEach(person => {
+                    resultHTML += `<li>${person.name}</li>`;
+                });
+                resultHTML += '</ul>';
+            }
+    
+            if (result.primary_topics && result.primary_topics.length > 0) {
+                resultHTML += '<h5>Primary Topics</h5><ul>';
+                result.primary_topics.forEach(topic => {
+                    resultHTML += `<li>${topic}</li>`;
+                });
+                resultHTML += '</ul>';
+            }
+    
+            combinedSummaryContent.innerHTML += resultHTML;
         });
-
+    
         if (data.cross_video_insights) {
-            displayCrossVideoInsights(data.cross_video_insights);
+            const crossVideoInsights = data.cross_video_insights;
+            let insightsHTML = '<h4>Cross Video Insights</h4>';
+    
+            if (crossVideoInsights.shared_insights && crossVideoInsights.shared_insights.length > 0) {
+                insightsHTML += '<h5>Shared Insights</h5><ul>';
+                crossVideoInsights.shared_insights.forEach(insight => {
+                    insightsHTML += `<li>${insight}</li>`;
+                });
+                insightsHTML += '</ul>';
+            }
+    
+            if (crossVideoInsights.common_themes && crossVideoInsights.common_themes.length > 0) {
+                insightsHTML += '<h5>Common Themes</h5><ul>';
+                crossVideoInsights.common_themes.forEach(theme => {
+                    insightsHTML += `<li>${theme}</li>`;
+                });
+                insightsHTML += '</ul>';
+            }
+    
+            if (crossVideoInsights.opposing_views && crossVideoInsights.opposing_views.length > 0) {
+                insightsHTML += '<h5>Opposing Views</h5><ul>';
+                crossVideoInsights.opposing_views.forEach(view => {
+                    insightsHTML += `<li>${view}</li>`;
+                });
+                insightsHTML += '</ul>';
+            }
+    
+            if (crossVideoInsights.sentiments && crossVideoInsights.sentiments.length > 0) {
+                insightsHTML += '<h5>Sentiments</h5><ul>';
+                crossVideoInsights.sentiments.forEach(sentiment => {
+                    insightsHTML += `<li>${sentiment}</li>`;
+                });
+                insightsHTML += '</ul>';
+            }
+    
+            document.getElementById('cross-video-insights-content').innerHTML = insightsHTML;
+            document.getElementById('cross-video-insights-card').style.display = 'block';
         } else {
             document.getElementById('cross-video-insights-card').style.display = 'none';
         }
-    }
+    }    
 
     function displayError(error) {
         const errorList = document.getElementById('error-list');
