@@ -7,7 +7,9 @@ from chalicelib.utils import logger, send_ws_message
 def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
     try:
         all_analysis_results = []
-        all_transcripts = []
+        all_transcripts = {}
+
+        total_videos = len(selected_videos)
 
         for video_id in selected_videos:
             logger.info(f"Processing video ID: {video_id}")
@@ -23,6 +25,10 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                     logger.error(f"No caption content found for caption ID: {caption['id']}")
                     continue
 
+                # Collect the full transcript
+                full_transcript = [entry for segment in segmented_transcripts for entry in segment['content']]
+                all_transcripts[video_id] = full_transcript
+
                 chunk_summaries = []
                 total_chunks = len(segmented_transcripts)
                 for index, segment in enumerate(segmented_transcripts):
@@ -35,9 +41,10 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                         chunk_summaries.append(chunk_summary)
                         send_ws_message(app, connection_id, request_id, 'chunk_progress', {
                             'video_id': video_id,
+                            'chunk_summary': chunk_json,
                             'chunk_index': index + 1,
                             'total_chunks': total_chunks,
-                            'chunk_summary': chunk_json
+                            'total_videos': total_videos
                         })
                     except Exception as e:
                         logger.error(f"Error during chunk analysis for video ID {video_id}, chunk {index + 1}: {e}")
@@ -64,13 +71,11 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                             combined_summary_json = combined_summary.model_dump_json()
                             logger.info(f"Combined chunk analysis result for video ID {video_id}: {combined_summary_json[:500]}...{combined_summary_json[-500:]}")
                             all_analysis_results.append(combined_summary_dict)
-                            all_transcripts.extend(segmented_transcripts)
                             send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_json)
                         else:
                             logger.info(f"Only one chunk found for video ID {video_id}, skipping combining analysis.")
                             combined_summary_dict = chunk_summaries[0].model_dump()
                             all_analysis_results.append(combined_summary_dict)
-                            all_transcripts.extend(segmented_transcripts)
                             send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_dict)
                     except Exception as e:
                         logger.error(f"Error during combining chunk analyses for video ID {video_id}: {e}")
@@ -84,7 +89,8 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
             return
 
         response = {
-            "individual_results": all_analysis_results
+            "individual_results": all_analysis_results,
+            "transcripts": all_transcripts 
         }
 
         if len(selected_videos) > 1:

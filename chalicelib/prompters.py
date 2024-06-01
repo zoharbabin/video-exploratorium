@@ -31,7 +31,7 @@ class CrossVideoInsights(BaseModel):
     sentiments: List[str] = Field(description="Sentiments across the videos. Up to 1 sentence per sentiment.")
 
 class QAResponse(BaseModel):
-    answer: str = Field(description="The answer to the user's question based on the video content.")
+    answer: str = Field(description="The answer to the user's question based on the provided videos context.")
 
 @Prompter(llm="bedrock", model_name="anthropic.claude-3-sonnet-20240229-v1:0", jinja=True, model_settings={
     "max_tokens": 4096,
@@ -124,34 +124,26 @@ def cross_video_insights_pp(analysis_results: List[str]) -> CrossVideoInsights:
     "top_p": 0.999,
     "top_k": 1
 })
-def answer_question_pp(question: str, analysis_results: List[VideoSummary]) -> QAResponse:
+def answer_question_pp(question: str, analysis_results: List[VideoSummary], transcripts: List[str], prior_chat_messages: List[str]) -> QAResponse:
     """
-    - system: 
-        You are a data enrichment API. 
-        Your response should be in a valid JSON format, which its schema is specified in the `Response JSON Schema` section below. 
-        DO NOT add any text or explanations, only respond with the valid JSON.
-
-        ## Response JSON Schema
-        ```
-        {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "type": "object",
-            "properties": {
-                "answer": {
-                    "type": "string",
-                    "description": "The answer to the user's question based on the video content."
-                }
-            },
-            "required": ["answer"]
-        }
-        ```
-
     - user:
-        Based on the provided analysis results, answer the following question.
+        Based on the provided analysis results and transcripts, answer the user's input questions / chat message.
 
-        ## Question
-        {{ question }}
+        # Context:
 
-        ## Analysis Results
+        ## Context - Analysis Results:
         {{ analysis_results }}
+        
+        ## Context - Videos Transcripts:
+        {{ transcripts }}
+        
+        # Guidelines:
+        1. Your answer must be exclusively based on the provided context analysis resulsts and videos transcripts.
+        2. Provide an insightful and conversational response, and expect further questions to follow.
+        
+        # Chat History:
+        {{ prior_chat_messages }}
+
+        # The User's Input Question:
+        {{ question }}
     """

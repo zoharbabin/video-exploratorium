@@ -16,3 +16,8 @@ mark.status.success {
     background-color: transparent;
     color: var(--pico-color-green-400);
 }
+ul#error-list {
+    background-color: var(--pico-color-orange-300);
+    color: var(--pico-code-kbd-color);
+    font-weight: bolder;
+}

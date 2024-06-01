@@ -81,11 +81,11 @@ def websocket_handler(event, app):
                 pid, ks = extract_and_validate_auth_ws(headers)
                 ask_auth_time = time.time()
                 question = message.get('question')
-                analysis_results = message.get('analysisResults')
+                analysis_results = message.get('analysisResults')  # Assuming analysis results are available in the session
                 response = answer_question_pp(question=question, analysis_results=analysis_results)
                 ask_end_time = time.time()
                 logger.info(f"Auth time: {ask_auth_time - ask_start_time}s, Answer question time: {ask_end_time - ask_auth_time}s")
-                send_ws_message(app, event.connection_id, request_id, 'answer', response.model_dump_json())
+                send_ws_message(app, event.connection_id, request_id, 'chat_response', response.model_dump())
 
         finally:
             # Ensure removal of the request_id from the processed set

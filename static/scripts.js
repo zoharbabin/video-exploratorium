@@ -1,6 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
     let socket;
     let currentButton = null;
+    const chatSection = document.getElementById('chat-section');
+    const chatContainer = document.getElementById('chat-container');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    let analysisResults = null;
+    let transcripts = null;
 
     function connectWebSocket() {
         socket = new WebSocket('wss://fyocljsr02.execute-api.us-east-1.amazonaws.com/vidbot/');
@@ -75,8 +81,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Handle search videos list results
                 displayVideos(message.data);
                 stopLoadingIndicator();
-                closeAllDetails();
-                openDetailsByIds('videos-card');
+                closeAllAccordions();
+                openAccordionsByIds('videos-card');
                 break;
             case 'chunk_progress':
                 // Handle gradual analysis progress: a chunk of a single video complete
@@ -91,14 +97,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Handle final analysis results (the whole process is complete and full results are available):
                 displayFinalResults(message.data);
                 stopLoadingIndicator();
-                closeAllDetails();
-                openDetailsByIds('individual-videos-analysis-results', 'cross-video-insights-card');
+                closeAllAccordions();
+                openAccordionsByIds('individual-videos-analysis-results', 'cross-video-insights-card', 'chat-section');
+                analysisResults = message.data.individual_results;
+                transcripts = message.data.transcripts;
                 break;
             case 'error':
                 displayError(message.data);
                 stopLoadingIndicator();
-                closeAllDetails();
-                openDetailsByIds('errors-card');
+                closeAllAccordions();
+                openAccordionsByIds('errors-card');
+                break;
+            case 'chat_response':
+                displayChatMessage('LLM', message.data.answer);
+                stopLoadingIndicator();
+                openAccordionsByIds('chat-section');
                 break;
             default:
                 if (message.hasOwnProperty('stage')) {
@@ -117,6 +130,32 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function displayError(errorData) {
+        const errorsCard = document.getElementById('errors-card');
+        const errorList = document.getElementById('error-list');
+    
+        if (errorsCard && errorList) {
+            let errorHTML = '';
+    
+            if (typeof errorData === 'string') {
+                errorHTML += `<li>${errorData}</li>`;
+            } else if (typeof errorData === 'object') {
+                for (const key in errorData) {
+                    if (errorData.hasOwnProperty(key)) {
+                        errorHTML += `<li><strong>${key}:</strong> ${errorData[key]}</li>`;
+                    }
+                }
+            } else {
+                errorHTML += '<li>An unknown error occurred.</li>';
+            }
+    
+            errorList.innerHTML = errorHTML;
+            showAccordion('errors-card');
+        } else {
+            console.error('Error card or error list element not found');
+        }
+    }    
+
     function displayVideos(videos) {
         const videoList = document.getElementById('video-list-items');
         const { pid } = getUrlParams();
@@ -133,9 +172,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>`;
                 videoList.appendChild(li);
             });
-            const videosCard = document.getElementById('videos-card');
-            videosCard.style.display = 'block';
-            videosCard.setAttribute('open', 'open');
+            showAccordion('videos-card');
         }
     }
 
@@ -152,8 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function displayFinalResults(data) {
         const analysisResults = document.getElementById('individual-videos-analysis-results');
-        analysisResults.style.display = 'block';
-        analysisResults.setAttribute('open', 'open');
+        showAccordion('individual-videos-analysis-results');
 
         const navbar = document.getElementById('individual-videos-navbar');
         navbar.innerHTML = '<ul><li><strong>Choose an entry:</strong></li></ul><ul></ul>';
@@ -211,13 +247,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             document.getElementById('cross-video-insights-content').innerHTML = insightsHTML;
-            const crossVideoInsightsCard = document.getElementById('cross-video-insights-card');
-            crossVideoInsightsCard.style.display = 'block';
-            crossVideoInsightsCard.setAttribute('open', 'open');
+            showAccordion('cross-video-insights-card');
         } else {
-            const crossVideoInsightsCard = document.getElementById('cross-video-insights-card');
-            crossVideoInsightsCard.style.display = 'none';
-            crossVideoInsightsCard.removeAttribute('open');
+            hideAccordion('cross-video-insights-card');
         }
     }
 
@@ -315,18 +347,55 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error('Analyze Videos button not found');
     }
 
-    function closeAllDetails() {
+    const sendChatButton = document.getElementById('send-chat-button');
+    if (sendChatButton) {
+        sendChatButton.originalText = sendChatButton.textContent;
+        sendChatButton.addEventListener('click', function () {
+            const question = chatInput.value.trim();
+            if (question) {
+                displayChatMessage('You', question);
+                sendMessage('ask_question', { question, analysisResults, transcripts }, sendChatButton);
+                chatInput.value = ''; // Clear the input
+            }
+        });
+    } else {
+        console.error('Send Chat button not found');
+    }
+
+    function closeAllAccordions() {
         document.querySelectorAll('details').forEach(detail => {
             detail.removeAttribute('open');
         });
     }
 
-    function openDetailsByIds(...ids) {
+    function openAccordionsByIds(...ids) {
         ids.forEach(id => {
-            const detail = document.getElementById(id);
-            if (detail) {
-                detail.setAttribute('open', 'open');
-            }
+            showAccordion(id);
         });
     }
+
+    function showAccordion(id) {
+        const accordion = document.getElementById(id);
+        if (accordion) {
+            accordion.style.display = 'block';
+            accordion.setAttribute('open', 'open');
+        }
+    }
+
+    function hideAccordion(id) {
+        const accordion = document.getElementById(id);
+        if (accordion) {
+            accordion.style.display = 'none';
+            accordion.removeAttribute('open');
+        }
+    }
+
+    function displayChatMessage(sender, message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'chat-message';
+        messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+        chatMessages.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
+    }
 });
+
