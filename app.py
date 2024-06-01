@@ -1,8 +1,9 @@
-import os
 import boto3
+import time
 from chalicelib.utils import logger
 from chalice import Chalice, Response
-from chalicelib.routes import register_routes, websocket_handler
+from chalice.app import WebsocketEvent
+from chalicelib.routes import websocket_handler
 from chalicelib.middleware import handle_exceptions
 from jinja2 import Environment, FileSystemLoader
 
@@ -21,16 +22,18 @@ template_env = Environment(loader=FileSystemLoader('chalicelib/templates'))
 
 # WebSocket handlers
 @app.on_ws_message()
-def message(event):
+def message(event: WebsocketEvent):
     return websocket_handler(event, app)
 
 @app.on_ws_connect()
-def connect(event):
-    print(f"Client connected: {event}")
+def connect(event: WebsocketEvent):
+    connection_id = event.connection_id
+    print(f"Websocket Connection established: {connection_id}")
 
 @app.on_ws_disconnect()
-def disconnect(event):
-    print(f"Client disconnected: {event}")
+def disconnect(event: WebsocketEvent):
+    connection_id = event.connection_id
+    print(f"Websocket Connection closed: {connection_id}")
 
 # Middleware for handling exceptions
 @app.middleware('all')

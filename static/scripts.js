@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const chatInput = document.getElementById('chat-input');
     let analysisResults = null;
     let transcripts = null;
+    let chatHistory = []; // Array to hold chat messages
 
     function connectWebSocket() {
         socket = new WebSocket('wss://fyocljsr02.execute-api.us-east-1.amazonaws.com/vidbot/');
@@ -39,8 +40,6 @@ document.addEventListener("DOMContentLoaded", function () {
             statusElement.className = `status ${statusClass}`;
         }
     }
-
-    connectWebSocket();
 
     function getUrlParams() {
         const params = new URLSearchParams(window.location.search);
@@ -112,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 displayChatMessage('LLM', message.data.answer);
                 stopLoadingIndicator();
                 openAccordionsByIds('chat-section');
+                chatHistory.push({ sender: 'LLM', message: message.data.answer });
                 break;
             default:
                 if (message.hasOwnProperty('stage')) {
@@ -166,9 +166,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 li.innerHTML = `
                     ${generateThumbnail(pid, video.entry_id)}
                     <div>
-                        <strong>${video.entry_name}</strong> (${video.entry_id})<br>
-                        <small>${video.entry_description}</small>
-                        <br><small>Zoom Recording ID: ${video.entry_reference_id}</small>
+                        <ul>
+                            <li><strong>${video.entry_name}</strong> (${video.entry_id})</li>
+                            <li><small>${video.entry_description}</small></li>
+                            <li><small>RefID: ${video.entry_reference_id}</small></li>
+                        </ul>
                     </div>`;
                 videoList.appendChild(li);
             });
@@ -352,16 +354,14 @@ document.addEventListener("DOMContentLoaded", function () {
         sendChatButton.originalText = sendChatButton.textContent;
         sendChatButton.addEventListener('click', function () {
             const question = chatInput.value.trim();
-            if (question) {
-                displayChatMessage('You', question);
-                sendMessage('ask_question', { question, analysisResults, transcripts }, sendChatButton);
-                chatInput.value = ''; // Clear the input
-            }
+            displayChatMessage('You', question);
+            sendMessage('ask_question', { question: question, analysisResults: analysisResults, transcripts: transcripts, chat_history: chatHistory }, sendChatButton);
+            chatInput.value = ''; // Clear the input field
         });
     } else {
         console.error('Send Chat button not found');
     }
-
+    
     function closeAllAccordions() {
         document.querySelectorAll('details').forEach(detail => {
             detail.removeAttribute('open');
@@ -379,16 +379,28 @@ document.addEventListener("DOMContentLoaded", function () {
         if (accordion) {
             accordion.style.display = 'block';
             accordion.setAttribute('open', 'open');
+            
+            // Find the next <hr /> element and set its display to 'block'
+            const nextHr = accordion.nextElementSibling;
+            if (nextHr && nextHr.tagName.toLowerCase() === 'hr') {
+                nextHr.style.display = 'block';
+            }
         }
-    }
+    }    
 
     function hideAccordion(id) {
         const accordion = document.getElementById(id);
         if (accordion) {
             accordion.style.display = 'none';
             accordion.removeAttribute('open');
+    
+            // Find the next <hr /> element and set its display to 'none'
+            const nextHr = accordion.nextElementSibling;
+            if (nextHr && nextHr.tagName.toLowerCase() === 'hr') {
+                nextHr.style.display = 'none';
+            }
         }
-    }
+    }    
 
     function displayChatMessage(sender, message) {
         const messageElement = document.createElement('div');
@@ -396,6 +408,15 @@ document.addEventListener("DOMContentLoaded", function () {
         messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
         chatMessages.appendChild(messageElement);
         chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
+        chatHistory.push({ sender: sender, message: message }); // Add message to chat history
     }
-});
 
+    hideAccordion('videos-card');
+    hideAccordion('progress-section');
+    hideAccordion('individual-videos-analysis-results');
+    hideAccordion('cross-video-insights-card');
+    hideAccordion('chat-section');
+    hideAccordion('errors-card');
+    closeAllAccordions();
+    connectWebSocket();
+});

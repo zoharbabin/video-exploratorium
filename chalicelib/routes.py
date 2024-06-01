@@ -1,10 +1,11 @@
 import json
 import time
-from chalicelib.utils import handle_error, send_ws_message, logger
-from chalicelib.kaltura_utils import fetch_videos, validate_ks
+from chalice import Response
+from chalice.app import WebsocketEvent
 from chalicelib.analyze import analyze_videos_ws
 from chalicelib.prompters import answer_question_pp
-from chalice import Response
+from chalicelib.kaltura_utils import fetch_videos, validate_ks
+from chalicelib.utils import handle_error, send_ws_message, logger
 
 # Set to track processed request IDs
 processed_request_ids = set()
@@ -30,12 +31,13 @@ def register_routes(app, cors_config):
 
         return pid, ks
 
-def websocket_handler(event, app):
+def websocket_handler(event: WebsocketEvent, app):
     start_time = time.time()
     try:
         logger.debug(f"WebSocket event: {event}")
         message = json.loads(event.body)
         request_id = message.get('request_id')
+        connection_id = event.connection_id
 
         # Ignore timeout messages early
         if message.get('message') == "Endpoint request timed out":
@@ -53,7 +55,7 @@ def websocket_handler(event, app):
         action = message.get('action')
         headers = message.get('headers', {})
 
-        logger.debug(f"Received message: {message}", extra={'connection_id': event.connection_id})
+        logger.debug(f"Received message: {message}", extra={'connection_id': connection_id})
 
         try:
             if action == 'get_videos':
@@ -65,14 +67,14 @@ def websocket_handler(event, app):
                 videos = fetch_videos(ks, pid, category_id, free_text)
                 fetch_videos_time = time.time()
                 logger.info(f"Auth time: {fetch_auth_time - fetch_start_time}s, Fetch videos time: {fetch_videos_time - fetch_auth_time}s")
-                send_ws_message(app, event.connection_id, request_id, 'videos', videos)
+                send_ws_message(app, connection_id, request_id, 'videos', videos)
 
             elif action == 'analyze_videos':
                 analyze_start_time = time.time()
                 pid, ks = extract_and_validate_auth_ws(headers)
                 analyze_auth_time = time.time()
                 selected_videos = message.get('selectedVideos', [])
-                analyze_videos_ws(app, event.connection_id, request_id, selected_videos, ks, pid)
+                analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid)
                 analyze_end_time = time.time()
                 logger.info(f"Auth time: {analyze_auth_time - analyze_start_time}s, Analyze videos time: {analyze_end_time - analyze_auth_time}s")
 
@@ -80,13 +82,15 @@ def websocket_handler(event, app):
                 ask_start_time = time.time()
                 pid, ks = extract_and_validate_auth_ws(headers)
                 ask_auth_time = time.time()
-                question = message.get('question')
-                analysis_results = message.get('analysisResults')  # Assuming analysis results are available in the session
-                response = answer_question_pp(question=question, analysis_results=analysis_results)
+                question = message.get('question', 'Can you create a list of exploratory questions for these videos?')
+                analysis_results = message.get('analysisResults', [])
+                transcripts = message.get('transcripts', []) 
+                prior_chat_messages = message.get('chat_history', []) 
+                response = answer_question_pp(question=question, analysis_results=analysis_results, transcripts=transcripts, prior_chat_messages=prior_chat_messages)
                 ask_end_time = time.time()
                 logger.info(f"Auth time: {ask_auth_time - ask_start_time}s, Answer question time: {ask_end_time - ask_auth_time}s")
-                send_ws_message(app, event.connection_id, request_id, 'chat_response', response.model_dump())
-
+                send_ws_message(app, connection_id, request_id, 'chat_response', response.model_dump())
+                
         finally:
             # Ensure removal of the request_id from the processed set
             processed_request_ids.discard(request_id)
@@ -94,8 +98,8 @@ def websocket_handler(event, app):
             logger.info(f"Total time for request {request_id}: {end_time - start_time} seconds")
 
     except Exception as e:
-        logger.error(f"WebSocket handler error: {e}", extra={'connection_id': event.connection_id})
-        handle_error(e, app.websocket_api, event.connection_id, request_id)  # Use handle_error from utils.py
+        logger.error(f"WebSocket handler error: {e}", extra={'connection_id': connection_id})
+        handle_error(e, app.websocket_api, connection_id, request_id)  # Use handle_error from utils.py
         processed_request_ids.discard(request_id)  # Ensure removal of the request_id from the processed set even on error
         end_time = time.time()
         logger.info(f"Total time for request {request_id} (with error): {end_time - start_time} seconds")

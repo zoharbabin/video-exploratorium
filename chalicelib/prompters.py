@@ -102,7 +102,7 @@ def analyze_chunk_pp(video_entry_id: str, chunk_transcript: str) -> VideoSummary
 def cross_video_insights_pp(analysis_results: List[str]) -> CrossVideoInsights:
     """
     - user:
-        Below are summaries of multiple video transcripts. 
+        Below are summaries of one or multiple videos. 
         Your task is to provide a cross-videos analysis based on the guidelines.
 
         ## Guidelines:
@@ -127,23 +127,29 @@ def cross_video_insights_pp(analysis_results: List[str]) -> CrossVideoInsights:
 def answer_question_pp(question: str, analysis_results: List[VideoSummary], transcripts: List[str], prior_chat_messages: List[str]) -> QAResponse:
     """
     - user:
-        Based on the provided analysis results and transcripts, answer the user's input questions / chat message.
+        Below are summaries and transcripts of one or multiple videos, Chat history and the user's input question.
+        Your task is to answer the user's question in a chatty way, based on the provided data.
+        Be chatty and conversational in your response.
+        
 
-        # Context:
-
-        ## Context - Analysis Results:
+        ## Context
+        
+        ### Analysis Results:
+        
         {{ analysis_results }}
         
-        ## Context - Videos Transcripts:
+        ### Videos Transcripts:
+
         {{ transcripts }}
         
-        # Guidelines:
-        1. Your answer must be exclusively based on the provided context analysis resulsts and videos transcripts.
-        2. Provide an insightful and conversational response, and expect further questions to follow.
-        
-        # Chat History:
+
+        ## Chat History:
+
         {{ prior_chat_messages }}
 
-        # The User's Input Question:
+        
+        ## The Question You Should Answer:
+
         {{ question }}
+        
     """
