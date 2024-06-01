@@ -1,7 +1,7 @@
 
 # Video Exploratorium
 
-[![GitHub License](https://img.shields.io/github/license/zoharbabin/video-exploratorium)](https://github.com/zoharbabin/video-exploratorium/blob/main/LICENSE)
+[![GitHub License](https://img.shields.io/github/license/zoharbabin/video-exploratorium?style=plastic&cacheSeconds=1000)](https://github.com/zoharbabin/video-exploratorium/blob/main/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/zohar?style=social)](https://twitter.com/zohar)
 
 `Video Exploratorium` is an experiment project showcasing how to analyze and explore Kaltura videos using Large Language Models (LLMs). Built with AWS Lambda and Chalice, it offers a way to interact with video content through real-time analysis and a chat-based interface utilizing LLMs.  
