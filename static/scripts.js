@@ -1,13 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
     let socket;
-    let currentButton = null; // Track the current button being processed
+    let currentButton = null;
 
     function connectWebSocket() {
         socket = new WebSocket('wss://fyocljsr02.execute-api.us-east-1.amazonaws.com/vidbot/');
-        showStatus('Connecting to WebSocket...', 'progress');
+        showStatus('ᯤ connecting...', 'progress');
 
         socket.onopen = function () {
-            showStatus('Connected to the server', 'success');
+            showStatus('ထ', 'success');
         };
 
         socket.onclose = function () {
@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const { pid, ks } = getUrlParams();
         if (!pid || !ks) {
             console.error('PID and KS parameters are required');
+            showStatus('pid and ks URL parameters are required!', 'danger');
             return;
         }
 
@@ -62,7 +63,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(message));
-            showStatus('Message sent to the server...', 'info');
             startLoadingIndicator(button); // Start the loading indicator and change button state
         } else {
             console.error('WebSocket is not open. Ready state: ' + socket.readyState);
@@ -70,29 +70,35 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function handleServerMessage(message) {
-        showStatus('Response received from the server', 'success');
-
         switch (message.stage) {
             case 'videos':
+                // Handle search videos list results
                 displayVideos(message.data);
-                stopLoadingIndicator(); 
+                stopLoadingIndicator();
+                closeAllDetails();
+                openDetailsByIds('videos-card');
                 break;
             case 'chunk_progress':
-                // Handle chunk progress if needed
+                // Handle gradual analysis progress: a chunk of a single video complete
                 break;
             case 'combined_summary':
-                displayCombinedSummary(message.data);
+                // Handle gradual analysis progress: single video all chunks complete
                 break;
             case 'cross_video_insights':
-                displayCrossVideoInsights(message.data);
+                // Handle gradual analysis progress: cross videos complete (combined summary)
                 break;
             case 'completed':
+                // Handle final analysis results (the whole process is complete and full results are available):
                 displayFinalResults(message.data);
-                stopLoadingIndicator(); 
+                stopLoadingIndicator();
+                closeAllDetails();
+                openDetailsByIds('individual-videos-analysis-results', 'cross-video-insights-card');
                 break;
             case 'error':
                 displayError(message.data);
-                stopLoadingIndicator(); 
+                stopLoadingIndicator();
+                closeAllDetails();
+                openDetailsByIds('errors-card');
                 break;
             default:
                 if (message.hasOwnProperty('stage')) {
@@ -119,7 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
             videos.forEach(video => {
                 const li = document.createElement('li');
                 li.innerHTML = `
-                    <img src="https://cfvod.kaltura.com/p/${pid}/sp/${pid}00/thumbnail/entry_id/${video.entry_id}/width/80/type/2/bgcolor/000000" alt="Thumbnail">
+                    ${generateThumbnail(pid, video.entry_id)}
                     <div>
                         <strong>${video.entry_name}</strong> (${video.entry_id})<br>
                         <small>${video.entry_description}</small>
@@ -127,94 +133,51 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>`;
                 videoList.appendChild(li);
             });
-            document.getElementById('videos-card').style.display = 'block';
+            const videosCard = document.getElementById('videos-card');
+            videosCard.style.display = 'block';
+            videosCard.setAttribute('open', 'open');
         }
     }
 
-    function displayCombinedSummary(data) {
-        const combinedSummaryContent = document.getElementById('combined-summary-content');
-        if (combinedSummaryContent) {
-            combinedSummaryContent.innerHTML = `
-                <h4>Full Summary</h4>
-                <p>${data.full_summary}</p>
-                ${data.sections.length > 0 ? `<h4>Sections</h4><ul>${data.sections.map(section => `<li><strong>${section.title}</strong>: ${section.summary}<br><small>${section.start_sentence}</small></li>`).join('')}</ul>` : ''}
-                ${data.insights.length > 0 ? `<h4>Insights</h4><ul>${data.insights.map(insight => `<li>${insight.text}</li>`).join('')}</ul>` : ''}
-                ${data.people.length > 0 ? `<h4>People</h4><ul>${data.people.map(person => `<li>${person.name}</li>`).join('')}</ul>` : ''}
-                ${data.primary_topics.length > 0 ? `<h4>Primary Topics</h4><ul>${data.primary_topics.map(topic => `<li>${topic}</li>`).join('')}</ul>` : ''}`;
-        }
+    function generateThumbnail(pid, entry_id, time_seconds = 0) {
+        return `<img src="https://cfvod.kaltura.com/p/${pid}/sp/${pid}00/thumbnail/entry_id/${entry_id}/width/80/type/2/bgcolor/000000?time=${time_seconds}" alt="Thumbnail">`;
     }
 
-    function displayCrossVideoInsights(data) {
-        const insightsContent = document.getElementById('cross-video-insights-content');
-        if (insightsContent) {
-            insightsContent.innerHTML = `
-                ${data.shared_insights && data.shared_insights.length > 0 ? `<h4>Shared Insights</h4><ul>${data.shared_insights.map(insight => `<li>${insight}</li>`).join('')}</ul>` : ''}
-                ${data.common_themes && data.common_themes.length > 0 ? `<h4>Common Themes</h4><ul>${data.common_themes.map(theme => `<li>${theme}</li>`).join('')}</ul>` : ''}
-                ${data.opposing_views && data.opposing_views.length > 0 ? `<h4>Opposing Views</h4><ul>${data.opposing_views.map(view => `<li>${view}</li>`).join('')}</ul>` : ''}
-                ${data.sentiments && data.sentiments.length > 0 ? `<h4>Sentiments</h4><ul>${data.sentiments.map(sentiment => `<li>${sentiment}</li>`).join('')}</ul>` : ''}`;
-            document.getElementById('cross-video-insights-card').style.display = 'block';
-        } else {
-            document.getElementById('cross-video-insights-card').style.display = 'none';
-        }
+    function formatTime(seconds) {
+        const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor(seconds % 3600 / 60).toString().padStart(2, '0');
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${h}:${m}:${s}`;
     }
 
     function displayFinalResults(data) {
-        const analysisResults = document.getElementById('analysis-results');
+        const analysisResults = document.getElementById('individual-videos-analysis-results');
         analysisResults.style.display = 'block';
-    
-        const combinedSummaryContent = document.getElementById('combined-summary-content');
-        combinedSummaryContent.innerHTML = ''; // Clear any previous content
-    
-        data.individual_results.forEach(result => {
-            let resultHTML = `
-                <h4>Video Entry: ${result.entry_id}</h4>
-                <p><strong>Full Summary:</strong> ${result.full_summary}</p>
-            `;
-    
-            if (result.sections && result.sections.length > 0) {
-                resultHTML += '<h5>Sections</h5><ul>';
-                result.sections.forEach(section => {
-                    resultHTML += `
-                        <li>
-                            <strong>${section.title}</strong>: ${section.summary}
-                            <br><small>Start: ${section.start_sentence} (Time: ${section.start_time}s)</small>
-                        </li>
-                    `;
-                });
-                resultHTML += '</ul>';
-            }
-    
-            if (result.insights && result.insights.length > 0) {
-                resultHTML += '<h5>Insights</h5><ul>';
-                result.insights.forEach(insight => {
-                    resultHTML += `<li>${insight.text} (Time: ${insight.start_time}s)</li>`;
-                });
-                resultHTML += '</ul>';
-            }
-    
-            if (result.people && result.people.length > 0) {
-                resultHTML += '<h5>People</h5><ul>';
-                result.people.forEach(person => {
-                    resultHTML += `<li>${person.name}</li>`;
-                });
-                resultHTML += '</ul>';
-            }
-    
-            if (result.primary_topics && result.primary_topics.length > 0) {
-                resultHTML += '<h5>Primary Topics</h5><ul>';
-                result.primary_topics.forEach(topic => {
-                    resultHTML += `<li>${topic}</li>`;
-                });
-                resultHTML += '</ul>';
-            }
-    
-            combinedSummaryContent.innerHTML += resultHTML;
+        analysisResults.setAttribute('open', 'open');
+
+        const navbar = document.getElementById('individual-videos-navbar');
+        navbar.innerHTML = '<ul><li><strong>Choose an entry:</strong></li></ul><ul></ul>';
+
+        data.individual_results.forEach((result, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<button class="secondary" data-index="${index}">${result.entry_id}</button>`;
+            navbar.querySelector('ul:nth-child(2)').appendChild(li);
         });
-    
+
+        navbar.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function () {
+                const index = this.getAttribute('data-index');
+                displayVideoResult(data.individual_results[index]);
+            });
+        });
+
+        // Display the first video result by default
+        displayVideoResult(data.individual_results[0]);
+
         if (data.cross_video_insights) {
             const crossVideoInsights = data.cross_video_insights;
             let insightsHTML = '<h4>Cross Video Insights</h4>';
-    
+
             if (crossVideoInsights.shared_insights && crossVideoInsights.shared_insights.length > 0) {
                 insightsHTML += '<h5>Shared Insights</h5><ul>';
                 crossVideoInsights.shared_insights.forEach(insight => {
@@ -222,7 +185,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 insightsHTML += '</ul>';
             }
-    
+
             if (crossVideoInsights.common_themes && crossVideoInsights.common_themes.length > 0) {
                 insightsHTML += '<h5>Common Themes</h5><ul>';
                 crossVideoInsights.common_themes.forEach(theme => {
@@ -230,7 +193,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 insightsHTML += '</ul>';
             }
-    
+
             if (crossVideoInsights.opposing_views && crossVideoInsights.opposing_views.length > 0) {
                 insightsHTML += '<h5>Opposing Views</h5><ul>';
                 crossVideoInsights.opposing_views.forEach(view => {
@@ -238,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 insightsHTML += '</ul>';
             }
-    
+
             if (crossVideoInsights.sentiments && crossVideoInsights.sentiments.length > 0) {
                 insightsHTML += '<h5>Sentiments</h5><ul>';
                 crossVideoInsights.sentiments.forEach(sentiment => {
@@ -246,25 +209,65 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 insightsHTML += '</ul>';
             }
-    
-            document.getElementById('cross-video-insights-content').innerHTML = insightsHTML;
-            document.getElementById('cross-video-insights-card').style.display = 'block';
-        } else {
-            document.getElementById('cross-video-insights-card').style.display = 'none';
-        }
-    }    
 
-    function displayError(error) {
-        const errorList = document.getElementById('error-list');
-        if (errorList) {
-            const li = document.createElement('li');
-            li.innerText = `Error: ${error}`;
-            errorList.appendChild(li);
-            const errorsCard = document.getElementById('errors-card');
-            errorsCard.style.display = 'block';
-            errorsCard.open = true;  // Ensure the details element is expanded
+            document.getElementById('cross-video-insights-content').innerHTML = insightsHTML;
+            const crossVideoInsightsCard = document.getElementById('cross-video-insights-card');
+            crossVideoInsightsCard.style.display = 'block';
+            crossVideoInsightsCard.setAttribute('open', 'open');
+        } else {
+            const crossVideoInsightsCard = document.getElementById('cross-video-insights-card');
+            crossVideoInsightsCard.style.display = 'none';
+            crossVideoInsightsCard.removeAttribute('open');
         }
-    }    
+    }
+
+    function displayVideoResult(result) {
+        const { pid } = getUrlParams();
+        let resultHTML = `
+            <h4>Video Entry: ${result.entry_id}</h4>
+            <p><strong>Full Summary:</strong> ${result.full_summary}</p>
+        `;
+
+        if (result.sections && result.sections.length > 0) {
+            resultHTML += '<h5>Sections</h5><ul>';
+            result.sections.forEach(section => {
+                resultHTML += `
+                    <li>
+                        ${generateThumbnail(pid, result.entry_id, section.start_time)}
+                        <strong>${section.title}</strong>: ${section.summary}
+                        <br><small>Start: ${section.start_sentence} (Time: ${formatTime(section.start_time)})</small>
+                    </li>`;
+            });
+            resultHTML += '</ul>';
+        }
+
+        if (result.insights && result.insights.length > 0) {
+            resultHTML += '<h5>Insights</h5><ul>';
+            result.insights.forEach(insight => {
+                resultHTML += `<li>${insight.text} (Time: ${formatTime(insight.start_time)})</li>`;
+            });
+            resultHTML += '</ul>';
+        }
+
+        if (result.people && result.people.length > 0) {
+            resultHTML += '<h5>People</h5><ul>';
+            result.people.forEach(person => {
+                resultHTML += `<li>${person.name}</li>`;
+            });
+            resultHTML += '</ul>';
+        }
+
+        if (result.primary_topics && result.primary_topics.length > 0) {
+            resultHTML += '<h5>Primary Topics</h5><ul>';
+            result.primary_topics.forEach(topic => {
+                resultHTML += `<li>${topic}</li>`;
+            });
+            resultHTML += '</ul>';
+        }
+
+        const summaryContent = document.getElementById('individual-videos-summary-content');
+        summaryContent.innerHTML = resultHTML;
+    }
 
     function startLoadingIndicator(button) {
         currentButton = button;
@@ -310,5 +313,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     } else {
         console.error('Analyze Videos button not found');
+    }
+
+    function closeAllDetails() {
+        document.querySelectorAll('details').forEach(detail => {
+            detail.removeAttribute('open');
+        });
+    }
+
+    function openDetailsByIds(...ids) {
+        ids.forEach(id => {
+            const detail = document.getElementById(id);
+            if (detail) {
+                detail.setAttribute('open', 'open');
+            }
+        });
     }
 });

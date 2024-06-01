@@ -9,5 +9,10 @@ body>header .container {
     justify-content: space-between;
 }
 mark.status.progress {
-    color: var(--pico-ins-color);
+    background-color: transparent;
+    color: var(--pico-color-fuchsia-250);
+}
+mark.status.success {
+    background-color: transparent;
+    color: var(--pico-color-green-400);
 }
