@@ -127,7 +127,7 @@ def get_english_captions(entry_id, ks, pid):
     logger.debug(f"Captions for entry ID {entry_id}: {captions}")
     return captions
 
-def fetch_videos(ks, pid, category_ids=None, free_text=None):
+def fetch_videos(ks, pid, category_ids=None, free_text=None, number_of_videos=6):
     client = get_kaltura_client(ks, pid)
     search_params = KalturaESearchEntryParams()
     search_params.orderBy = KalturaESearchOrderBy()
@@ -169,7 +169,7 @@ def fetch_videos(ks, pid, category_ids=None, free_text=None):
 
     pager = KalturaFilterPager()
     pager.pageIndex = 1
-    pager.pageSize = 4
+    pager.pageSize = number_of_videos
 
     result = client.elasticSearch.eSearch.searchEntry(search_params, pager)
 

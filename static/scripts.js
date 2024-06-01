@@ -162,14 +162,14 @@ document.addEventListener("DOMContentLoaded", function () {
         if (videoList) {
             videoList.innerHTML = '';
             videos.forEach(video => {
-                const li = document.createElement('li');
+                const li = document.createElement('div');
                 li.innerHTML = `
-                    ${generateThumbnail(pid, video.entry_id)}
+                    ${generateThumbnail(pid, video.entry_id, 0, 120, true)}
                     <div>
                         <ul>
-                            <li><strong>${video.entry_name}</strong> (${video.entry_id})</li>
-                            <li><small>${video.entry_description}</small></li>
-                            <li><small>RefID: ${video.entry_reference_id}</small></li>
+                            <li><h6>${video.entry_name} <small>(${video.entry_id})</small></h6></li>
+                            ${video.entry_description ? `<li>${truncateWithEllipsis(strip(video.entry_description), 240)}</li>` : ''}
+                            ${video.entry_reference_id ? `<li><small>RefID: ${video.entry_reference_id}</small></li>` : ''}
                         </ul>
                     </div>`;
                 videoList.appendChild(li);
@@ -178,8 +178,40 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function generateThumbnail(pid, entry_id, time_seconds = 0) {
-        return `<img src="https://cfvod.kaltura.com/p/${pid}/sp/${pid}00/thumbnail/entry_id/${entry_id}/width/80/type/2/bgcolor/000000?time=${time_seconds}" alt="Thumbnail">`;
+    function strip(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || "";
+    }
+
+    function generateThumbnail(pid, entry_id, time_seconds = 0, width = 120, no_time = false) {
+        return `<img src="https://cfvod.kaltura.com/p/${pid}/sp/${pid}00/thumbnail/entry_id/${entry_id}/width/${width}/type/2/bgcolor/000000/quality/85/${no_time ? '' : 'vid_sec/' + time_seconds}" alt="Thumbnail of ${entry_id} at ${time_seconds} sec">`;
+    }
+
+    function truncateWithEllipsis(text, maxLength = 24) {
+        if (text.length <= maxLength) {
+            return text;
+        }
+        
+        let truncated = text.slice(0, maxLength);
+        const lastPeriodIndex = truncated.lastIndexOf('.');
+        const lastSpaceIndex = truncated.lastIndexOf(' ');
+    
+        if (lastPeriodIndex !== -1 && lastPeriodIndex + 1 <= maxLength) {
+            return truncated.slice(0, lastPeriodIndex + 1) + '...';
+        }
+        
+        if (lastSpaceIndex !== -1 && lastSpaceIndex <= maxLength) {
+            return truncated.slice(0, lastSpaceIndex) + '...';
+        }
+        
+        // If no period or space is found, cut off at the max length, ensuring it does not cut in the middle of a word
+        truncated = text.slice(0, maxLength);
+        const lastWordBoundaryIndex = truncated.lastIndexOf(' ');
+        if (lastWordBoundaryIndex !== -1) {
+            return truncated.slice(0, lastWordBoundaryIndex) + '...';
+        }
+        
+        return truncated + '...';
     }
 
     function formatTime(seconds) {
@@ -403,12 +435,62 @@ document.addEventListener("DOMContentLoaded", function () {
     }    
 
     function displayChatMessage(sender, message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'chat-message';
-        messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
-        chatMessages.appendChild(messageElement);
+        if (sender === 'LLM') {
+            renderChatResponse(message);
+        } else {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'chat-message';
+            messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatMessages.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
+            chatHistory.push({ sender: sender, message: message }); // Add message to chat history
+        }
+    }
+
+    function renderChatResponse(answerText) {
+        // Create a container for the rendered content
+        const container = document.createElement('div');
+        container.className = 'chat-response';
+
+        // Split the answer text into lines
+        const lines = answerText.split('\n');
+
+        // Determine the content type and render appropriately
+        let currentList = null;
+
+        lines.forEach(line => {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('1. ') || trimmedLine.startsWith('* ')) {
+                // Create an ordered list or unordered list
+                if (!currentList) {
+                    currentList = trimmedLine.startsWith('1. ') ? document.createElement('ol') : document.createElement('ul');
+                    container.appendChild(currentList);
+                }
+                // Create a list item
+                const li = document.createElement('li');
+                li.textContent = trimmedLine.replace(/^\d+\.\s*/, '').replace(/^\*\s*/, '');
+                currentList.appendChild(li);
+            } else if (trimmedLine === '') {
+                // Reset the list if an empty line is encountered
+                currentList = null;
+            } else {
+                // Create a paragraph for any other text
+                if (currentList) {
+                    currentList = null;
+                }
+                const p = document.createElement('p');
+                p.textContent = trimmedLine;
+                container.appendChild(p);
+            }
+        });
+
+        // append "LLM:" to the answer text
+        const llm_indicator = document.createElement('strong');
+        llm_indicator.text = 'LLM:';
+        container.prepend(llm_indicator);
+        // Append the rendered content to chat messages
+        chatMessages.appendChild(container);
         chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
-        chatHistory.push({ sender: sender, message: message }); // Add message to chat history
     }
 
     hideAccordion('videos-card');

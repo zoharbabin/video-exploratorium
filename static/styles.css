@@ -21,3 +21,43 @@ ul#error-list {
     color: var(--pico-code-kbd-color);
     font-weight: bolder;
 }
+div#video-list-items {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: first baseline;
+    justify-content: flex-start;
+    align-items: first baseline;
+}
+div#video-list-items>div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    border-bottom: var(--pico-color-indigo-300) 0.05em dashed;
+    margin-bottom: 6px;
+}
+div#video-list-items>div ul li {
+    list-style: none;
+}
+#video-list-items>div h6 {
+    margin: 0;
+    padding: 0;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--pico-color-azure-450);
+}
+#video-list-items>div small {
+    margin: 0;
+    padding: 0;
+    color: var(--pico-color-slate-300);
+}
+img {
+	border-radius: 6px;
+}
+.chat-message,
+.chat-response {
+    border-bottom: var(--pico-color-indigo-300) 0.05em dashed;
+    margin-bottom: 2px;   
+}
