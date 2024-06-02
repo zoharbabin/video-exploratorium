@@ -132,7 +132,7 @@ def fetch_videos(ks, pid, category_ids=None, free_text=None, number_of_videos=6)
     search_params = KalturaESearchEntryParams()
     search_params.orderBy = KalturaESearchOrderBy()
     order_item = KalturaESearchEntryOrderByItem()
-    order_item.sortField = KalturaESearchEntryOrderByFieldName.UPDATED_AT
+    order_item.sortField = KalturaESearchEntryOrderByFieldName.CREATED_AT
     order_item.sortOrder = KalturaESearchSortOrder.ORDER_BY_DESC
     search_params.orderBy.orderItems = [order_item]
 
