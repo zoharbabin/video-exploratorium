@@ -10,7 +10,7 @@
 <section>
     <mark id="status">...</mark>
     <article>
-        <details open>
+        <details id="search-card">
             <summary>Search Videos</summary>
             <div role="search">
                 <input type="text" id="category-id-text-input" placeholder="Ancestor category ID">
@@ -55,9 +55,16 @@
             <summary>Chat with the Videos</summary>
             <div id="chat-container">
                 <details id="followup-questions-card">
-                    <summary>Suggested Follow-up Questions</summary>
-                    <div id="followup-questions-container"></div>
-                </details>
+                    <summary>
+                        Suggested Follow-up Questions 
+                        <button id="reload-followup-questions" class="contrast" style="margin-left: 10px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 493 493">
+                                <path d="M123 374a173 173 0 0 1-8-249l45 46c3 2 7 0 8-3L192 5c1-2-1-5-4-4L25 25c-3 1-5 6-3 8l46 46a239 239 0 0 0 176 405l10-66c-47 4-95-11-131-44zm302 40A239 239 0 0 0 249 9l-10 66a173 173 0 0 1 175 107c25 62 13 135-36 186l-45-46c-3-2-7 0-8 3l-25 163c0 2 2 5 5 4l162-25c4 0 6-5 3-7l-45-46z"/>
+                              </svg>                              
+                        </button>
+                    </summary>
+                    <div id="followup-questions-content"></div>
+                </details>                
                 <hr />                
                 <div id="chat-messages"></div>
                 <input type="text" id="chat-input" placeholder="Ask a question..." />

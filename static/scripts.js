@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         socket.onopen = function () {
             showStatus('ထ', 'success');
+            showAccordion('search-card');
+            openAccordionsByIds('search-card');
         };
 
         socket.onclose = function () {
@@ -47,6 +49,21 @@ document.addEventListener("DOMContentLoaded", function () {
             pid: params.get('pid'),
             ks: params.get('ks')
         };
+    }
+    
+    const reloadFollowupQuestionsButton = document.getElementById('reload-followup-questions');
+    if (reloadFollowupQuestionsButton) {
+        reloadFollowupQuestionsButton.originalText = reloadFollowupQuestionsButton.textContent;
+        reloadFollowupQuestionsButton.addEventListener('click', function () {
+            generateFollowupQuestions(transcripts);
+        });
+    } else {
+        console.error('Reload Follow-up Questions button not found');
+    }
+
+    function generateFollowupQuestions(videoTranscripts) {
+        showFollowupQuestionsLoading();
+        sendMessage('generate_followup_questions', { transcripts: videoTranscripts });
     }
 
     function sendMessage(action, data, button) {
@@ -103,12 +120,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     openAccordionsByIds('individual-videos-analysis-results', 'chat-section');
                 analysisResults = message.data.individual_results;
                 transcripts = message.data.transcripts;
-                showFollowupQuestionsLoading();
-                sendMessage('generate_followup_questions', { transcripts: transcripts }, currentButton);
+                generateFollowupQuestions(transcripts);
                 break;
             case 'followup_questions':
-                hideFollowupQuestionsLoading();
-                displayFollowupQuestions(message.data.questions);
+                const followupQuestions = message.data.questions;
+                displayFollowupQuestions(followupQuestions);
+                stopLoadingIndicator();
+                openAccordionsByIds('followup-questions-card');
                 break;
             case 'error':
                 displayError(message.data);
@@ -132,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function displayFollowupQuestions(questions) {
-        const followupQuestionsContainer = document.getElementById('followup-questions-container');
+        const followupQuestionsContainer = document.getElementById('followup-questions-content');
         if (followupQuestionsContainer) {
             followupQuestionsContainer.innerHTML = '<h5>Suggested Follow-up Questions</h5>';
             const buttonsContainer = document.createElement('div');
@@ -159,20 +177,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }   
     
     function showFollowupQuestionsLoading() {
-        const followupQuestionsContainer = document.getElementById('followup-questions-container');
+        const followupQuestionsContainer = document.getElementById('followup-questions-content');
         if (followupQuestionsContainer) {
             followupQuestionsContainer.innerHTML = '<span aria-busy="true">Generating suggestions...</span>';
             showAccordion('followup-questions-card');
         }
     }
     
-    function hideFollowupQuestionsLoading() {
-        const followupQuestionsContainer = document.getElementById('followup-questions-container');
-        if (followupQuestionsContainer) {
-            followupQuestionsContainer.innerHTML = '';
-        }
-    }
-
     function generateUUID() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             const r = (Math.random() * 16) | 0,
@@ -227,6 +238,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             <li><h6>${video.entry_name} <small>(${video.entry_id})</small></h6></li>
                             ${video.entry_description ? `<li>${truncateWithEllipsis(strip(video.entry_description), 240)}</li>` : ''}
                             ${video.entry_reference_id ? `<li><small>RefID: ${video.entry_reference_id}</small></li>` : ''}
+                            ${video.entry_ms_duration ? `<li><small>Duration: ${formatTime((video.entry_ms_duration/1000))}</small></li>` : ''}
                         </ul>
                     </div>`;
                 videoList.appendChild(videoItem);
@@ -424,19 +436,20 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const getVideosCategoryTextButton = document.getElementById('get-videos-category-text-button');
+    const categoryIdInput = document.getElementById('category-id-text-input');
+    const freeTextInput = document.getElementById('free-text-input');
+    function handleGetVideos() {
+        const categoryId = categoryIdInput.value === "" ? null : categoryIdInput.value;
+        const freeText = freeTextInput.value === "" ? null : freeTextInput.value;
+        sendMessage('get_videos', { categoryId, freeText }, getVideosCategoryTextButton);
+    }
     if (getVideosCategoryTextButton) {
         getVideosCategoryTextButton.originalText = getVideosCategoryTextButton.textContent;
-        getVideosCategoryTextButton.addEventListener('click', function () {
-            const categoryIdInput = document.getElementById('category-id-text-input');
-            const categoryId = categoryIdInput.value === "" ? null : categoryIdInput.value;
-            const freeTextInput = document.getElementById('free-text-input');
-            const freeText = freeTextInput.value === "" ? null : freeTextInput.value;
-            sendMessage('get_videos', { categoryId, freeText }, getVideosCategoryTextButton);
-        });
+        getVideosCategoryTextButton.addEventListener('click', handleGetVideos);
     } else {
         console.error('Search videos button not found');
     }
-
+    
     const sendChatButton = document.getElementById('send-chat-button');
     if (sendChatButton) {
         sendChatButton.originalText = sendChatButton.textContent;
@@ -449,7 +462,19 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
         console.error('Send Chat button not found');
     }
-    
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            if (document.activeElement === categoryIdInput || document.activeElement === freeTextInput) {
+                event.preventDefault();
+                handleGetVideos();
+            } else if (document.activeElement === chatInput) {
+                event.preventDefault();
+                sendChatButton.click();            
+            }
+        }
+    });
+
     function closeAllAccordions() {
         document.querySelectorAll('details').forEach(detail => {
             detail.removeAttribute('open');
@@ -513,15 +538,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Determine the content type and render appropriately
         let currentList = null;
+        let currentListType = null;
 
         lines.forEach(line => {
             const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('1. ') || trimmedLine.startsWith('* ')) {
-                // Create an ordered list or unordered list
-                if (!currentList) {
-                    currentList = trimmedLine.startsWith('1. ') ? document.createElement('ol') : document.createElement('ul');
+            if (trimmedLine.match(/^\d+\.\s+/) || trimmedLine.startsWith('* ')) {
+                // Determine list type
+                const isOrderedList = trimmedLine.match(/^\d+\.\s+/);
+                const listType = isOrderedList ? 'ol' : 'ul';
+
+                // Create a new list if the list type has changed or there is no current list
+                if (!currentList || currentListType !== listType) {
+                    currentList = document.createElement(listType);
                     container.appendChild(currentList);
+                    currentListType = listType;
                 }
+
                 // Create a list item
                 const li = document.createElement('li');
                 li.textContent = trimmedLine.replace(/^\d+\.\s*/, '').replace(/^\*\s*/, '');
@@ -529,10 +561,12 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (trimmedLine === '') {
                 // Reset the list if an empty line is encountered
                 currentList = null;
+                currentListType = null;
             } else {
                 // Create a paragraph for any other text
                 if (currentList) {
                     currentList = null;
+                    currentListType = null;
                 }
                 const p = document.createElement('p');
                 p.textContent = trimmedLine;
@@ -540,10 +574,11 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // append "LLM:" to the answer text
-        const llm_indicator = document.createElement('strong');
-        llm_indicator.text = 'LLM:';
-        container.prepend(llm_indicator);
+        // Append "LLM:" to the answer text
+        const llmIndicator = document.createElement('strong');
+        llmIndicator.innerText = 'LLM:';
+        container.prepend(llmIndicator);
+
         // Append the rendered content to chat messages
         chatMessages.appendChild(container);
         chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom

@@ -43,7 +43,9 @@ div#video-list-items>div {
 }
 div#video-list-items>div ul li {
     list-style: none;
+    margin: 0;
     font-size: 14px;
+    padding: 0;
 }
 #video-list-items>div h6 {
     margin: 0;
@@ -69,6 +71,16 @@ img.thumbnail-img {
 .chat-response {
     border-bottom: var(--pico-color-indigo-300) 0.05em dashed;
     margin-bottom: 2px;   
+}
+.chat-response p {
+    margin: 0;
+    margin-bottom: 2px;
+    padding: 0;
+}
+.chat-response ol, .chat-response ul {
+    margin: 0;
+    margin-bottom: 6px;
+    padding: 0;
 }
 #individual-videos-summary-content ul {
     display: flex;
@@ -99,4 +111,13 @@ img.thumbnail-img {
     flex: 1 1 calc(50% - 10px); /* Two items per row with a gap */
     box-sizing: border-box;
     font-size: small;
+}
+#reload-followup-questions {
+    --pico-background-color: transparent;
+    --pico-color: var(--pico-contrast);
+    --pico-border-color: var(--pico-contrast);
+}
+#reload-followup-questions svg {
+    width: 12px;
+    height: 12px;
 }
