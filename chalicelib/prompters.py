@@ -7,11 +7,11 @@ class Section(BaseModel):
     title: str = Field(description="Short title of the section.")
     summary: str = Field(description="Detailed summary of the section. Up to 4 sentences long.")
     start_sentence: str = Field(description="First sentence from the transcript that begins the section.")
-    start_time: int = Field(description="Start time of the section in seconds.")
+    start_time: int = Field(description="Start time of the section as provided by startTime in the input transcript.")
 
 class Insight(BaseModel):
     text: str = Field(description="A short text describing the insight extracted from this segment. Up to 1 sentences long.")
-    start_time: int = Field(description="Start time of the insight in seconds.")
+    start_time: int = Field(description="Start time of the insight as provided by startTime in the input transcript.")
 
 class Person(BaseModel):
     name: str = Field(description="The name of the person (or identifier 'Person1', 'Person2', etc., if names are not available).")
@@ -21,7 +21,7 @@ class VideoSummary(BaseModel):
     full_summary: str = Field(description="Comprehensive summary of the video. Up to 6 sentences long.")
     sections: List[Section] = Field(description="List of sections identified in the video.")
     insights: List[Insight] = Field(description="List of main insights discussed in the video.")
-    people: List[Person] = Field(description="List of people identified in the video, with timestamps of when they first spoke.")
+    people: List[Person] = Field(description="List of people identified in the video, with timestamps (startTime) of when they first spoke.")
     primary_topics: List[str] = Field(description="Primary topics discussed in the video, topics should be described in up to 6 words per primary topic.")
 
 class CrossVideoInsights(BaseModel):

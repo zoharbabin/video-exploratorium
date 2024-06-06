@@ -18,20 +18,19 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
             if captions:
                 caption = captions[0]
                 logger.info(f"Processing caption ID: {caption['id']} for video ID: {video_id}")
-                segmented_transcripts = get_json_transcript(caption['id'], ks, pid)
-                logger.debug(f"Segmented transcripts for caption ID {caption['id']}: {segmented_transcripts}")
+                segmented_transcript = get_json_transcript(caption['id'], ks, pid)
+                logger.debug(f"Segmented transcript for caption ID {caption['id']}, total segments: {len(segmented_transcript)}")
 
-                if not segmented_transcripts:
+                if not segmented_transcript:
                     logger.error(f"No caption content found for caption ID: {caption['id']}")
                     continue
 
                 # Collect the full transcript
-                full_transcript = [entry for segment in segmented_transcripts for entry in segment['content']]
-                all_transcripts[video_id] = full_transcript
+                all_transcripts[video_id] = segmented_transcript
 
                 chunk_summaries = []
-                total_chunks = len(segmented_transcripts)
-                for index, segment in enumerate(segmented_transcripts):
+                total_chunks = len(segmented_transcript)
+                for index, segment in enumerate(segmented_transcript):
                     segment_text = json.dumps(segment)
                     logger.debug(f"Segment {index + 1}/{total_chunks} content for chunk analysis: {segment_text[:500]}...")
                     try:
