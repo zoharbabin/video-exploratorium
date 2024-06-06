@@ -1,3 +1,6 @@
+p, li, span {
+    font-size: medium;
+}
 body>header .container>a {
     margin: calc(var(--pico-spacing)* -.125) calc(var(--pico-spacing)* -.25);
     padding: calc(var(--pico-spacing)* .125) calc(var(--pico-spacing)* .25);
@@ -40,24 +43,48 @@ div#video-list-items>div {
 }
 div#video-list-items>div ul li {
     list-style: none;
+    font-size: 14px;
 }
 #video-list-items>div h6 {
     margin: 0;
     padding: 0;
     font-size: 0.8rem;
     font-weight: bold;
-    color: var(--pico-color-azure-450);
 }
 #video-list-items>div small {
     margin: 0;
     padding: 0;
     color: var(--pico-color-slate-300);
 }
-img {
+div.thumbnail-container {
+    display: contents;
+}
+img.thumbnail-img {
 	border-radius: 6px;
+    width: 120px;
 }
 .chat-message,
 .chat-response {
     border-bottom: var(--pico-color-indigo-300) 0.05em dashed;
     margin-bottom: 2px;   
+}
+#individual-videos-summary-content ul {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: flex-start;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+#individual-videos-summary-content li {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
+    justify-content: flex-start;    
+    margin-bottom: 1em;
+}
+#individual-videos-summary-content li img {
+    margin-right: 1em;
 }

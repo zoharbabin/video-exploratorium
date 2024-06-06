@@ -10,7 +10,7 @@
 <section>
     <mark id="status">...</mark>
     <article>
-        <details>
+        <details open>
             <summary>Search Videos</summary>
             <div role="search">
                 <input type="text" id="category-id-text-input" placeholder="Ancestor category ID">
@@ -19,18 +19,11 @@
             </div>
         </details>
         <hr />
-        <details>
-            <summary>Analyze Videos</summary>
-            <div role="group">
-                <input type="text" id="video-ids-input" placeholder="Entry IDs (comma separated)">
-                <button id="analyze-videos-button">Analyze</button>
-            </div>
-        </details>
-        <hr />
         <details id="videos-card">
             <summary>Search Results <small>(Videos that have EN captions)</small></summary>
             <div id="video-list-items" class="grid"></div>
-        </details>
+            <button id="analyze-selected-videos-button">Analyze Selected Videos</button>
+        </details>        
         <hr />
         <details id="progress-section">
             <summary>Analysis Progress</summary>

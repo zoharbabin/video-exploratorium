@@ -94,10 +94,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             case 'completed':
                 // Handle final analysis results (the whole process is complete and full results are available):
-                displayFinalResults(message.data);
+                let crossIncluded = displayFinalResults(message.data);
                 stopLoadingIndicator();
                 closeAllAccordions();
-                openAccordionsByIds('individual-videos-analysis-results', 'cross-video-insights-card', 'chat-section');
+                if (crossIncluded)
+                    openAccordionsByIds('individual-videos-analysis-results', 'cross-video-insights-card', 'chat-section');
+                else
+                    openAccordionsByIds('individual-videos-analysis-results', 'chat-section');
                 analysisResults = message.data.individual_results;
                 transcripts = message.data.transcripts;
                 break;
@@ -162,9 +165,15 @@ document.addEventListener("DOMContentLoaded", function () {
         if (videoList) {
             videoList.innerHTML = '';
             videos.forEach(video => {
-                const li = document.createElement('div');
-                li.innerHTML = `
-                    ${generateThumbnail(pid, video.entry_id, 0, 120, true)}
+                const videoItem = document.createElement('div');
+                videoItem.id = `videoItem-${video.entry_id}`;
+                videoItem.innerHTML = `
+                    <div>    
+                        <input type="checkbox" class="video-checkbox" data-entry-id="${video.entry_id}">
+                    </div>
+                    <div class="thumbnail-container">
+                        ${generateThumbnail(pid, video.entry_id, 0, 120, true)}
+                    </div>
                     <div>
                         <ul>
                             <li><h6>${video.entry_name} <small>(${video.entry_id})</small></h6></li>
@@ -172,7 +181,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ${video.entry_reference_id ? `<li><small>RefID: ${video.entry_reference_id}</small></li>` : ''}
                         </ul>
                     </div>`;
-                videoList.appendChild(li);
+                videoList.appendChild(videoItem);
             });
             showAccordion('videos-card');
         }
@@ -184,7 +193,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function generateThumbnail(pid, entry_id, time_seconds = 0, width = 120, no_time = false) {
-        return `<img src="https://cfvod.kaltura.com/p/${pid}/sp/${pid}00/thumbnail/entry_id/${entry_id}/width/${width}/type/2/bgcolor/000000/quality/85/${no_time ? '' : 'vid_sec/' + time_seconds}" alt="Thumbnail of ${entry_id} at ${time_seconds} sec">`;
+        return `<img class="thumbnail-img" src="https://cfvod.kaltura.com/p/${pid}/sp/${pid}00/thumbnail/entry_id/${entry_id}/width/${width}/type/2/bgcolor/000000/quality/85/${no_time ? '' : 'vid_sec/' + time_seconds}" alt="Thumbnail of ${entry_id} at ${time_seconds} sec">`;
     }
 
     function truncateWithEllipsis(text, maxLength = 24) {
@@ -281,10 +290,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             document.getElementById('cross-video-insights-content').innerHTML = insightsHTML;
-            showAccordion('cross-video-insights-card');
+            return true;
         } else {
-            hideAccordion('cross-video-insights-card');
+            return false;
         }
+    }
+
+    const analyzeSelectedVideosButton = document.getElementById('analyze-selected-videos-button');
+    if (analyzeSelectedVideosButton) {
+        analyzeSelectedVideosButton.originalText = analyzeSelectedVideosButton.textContent;
+        analyzeSelectedVideosButton.addEventListener('click', function () {
+            const selectedVideos = Array.from(document.querySelectorAll('.video-checkbox:checked')).map(checkbox => checkbox.getAttribute('data-entry-id'));
+            if (selectedVideos.length === 0) {
+                alert('Please select at least one video to analyze.');
+                return;
+            }
+            sendMessage('analyze_videos', { selectedVideos }, this);
+        });
+    } else {
+        console.error('Analyze Selected Videos button not found');
     }
 
     function displayVideoResult(result) {
@@ -299,9 +323,9 @@ document.addEventListener("DOMContentLoaded", function () {
             result.sections.forEach(section => {
                 resultHTML += `
                     <li>
-                        ${generateThumbnail(pid, result.entry_id, section.start_time)}
-                        <strong>${section.title}</strong>: ${section.summary}
-                        <br><small>Start: ${section.start_sentence} (Time: ${formatTime(section.start_time)})</small>
+                        ${generateThumbnail(pid, result.entry_id, (section.start_time / 1000))}
+                        <strong>${section.title}</strong>${section.summary}
+                        <br><small>Start: ${section.start_sentence} (Time: ${formatTime((section.start_time / 1000))})</small>
                     </li>`;
             });
             resultHTML += '</ul>';
@@ -310,7 +334,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (result.insights && result.insights.length > 0) {
             resultHTML += '<h5>Insights</h5><ul>';
             result.insights.forEach(insight => {
-                resultHTML += `<li>${insight.text} (Time: ${formatTime(insight.start_time)})</li>`;
+                resultHTML += `<li>${insight.text} (Time: ${formatTime((insight.start_time / 1000))})</li>`;
             });
             resultHTML += '</ul>';
         }
@@ -363,22 +387,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     } else {
         console.error('Search videos button not found');
-    }
-
-    const analyzeVideosButton = document.getElementById('analyze-videos-button');
-    if (analyzeVideosButton) {
-        analyzeVideosButton.originalText = analyzeVideosButton.textContent;
-        analyzeVideosButton.addEventListener('click', function () {
-            const videoIdsInput = document.getElementById('video-ids-input');
-            if (videoIdsInput) {
-                const selectedVideos = videoIdsInput.value.split(',').map(id => id.trim());
-                sendMessage('analyze_videos', { selectedVideos }, analyzeVideosButton);
-            } else {
-                console.error('Video IDs input not found');
-            }
-        });
-    } else {
-        console.error('Analyze Videos button not found');
     }
 
     const sendChatButton = document.getElementById('send-chat-button');
