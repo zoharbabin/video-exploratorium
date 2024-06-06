@@ -2,10 +2,10 @@ import json
 import time
 from chalice import Response
 from chalice.app import WebsocketEvent
-from chalicelib.analyze import analyze_videos_ws
 from chalicelib.prompters import answer_question_pp
 from chalicelib.kaltura_utils import fetch_videos, validate_ks
 from chalicelib.utils import handle_error, send_ws_message, logger
+from chalicelib.analyze import analyze_videos_ws, generate_followup_questions_ws
 
 # Set to track processed request IDs
 processed_request_ids = set()
@@ -77,6 +77,15 @@ def websocket_handler(event: WebsocketEvent, app):
                 analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid)
                 analyze_end_time = time.time()
                 logger.info(f"Auth time: {analyze_auth_time - analyze_start_time}s, Analyze videos time: {analyze_end_time - analyze_auth_time}s")
+
+            elif action == 'generate_followup_questions':
+                followup_start_time = time.time()
+                pid, ks = extract_and_validate_auth_ws(headers)
+                followup_auth_time = time.time()
+                transcripts = message.get('transcripts', [])
+                generate_followup_questions_ws(app, connection_id, request_id, transcripts)
+                followup_end_time = time.time()
+                logger.info(f"Auth time: {followup_auth_time - followup_start_time}s, Generate follow-up questions time: {followup_end_time - followup_auth_time}s")
 
             elif action == 'ask_question':
                 ask_start_time = time.time()

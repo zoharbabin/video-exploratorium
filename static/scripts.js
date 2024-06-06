@@ -103,6 +103,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     openAccordionsByIds('individual-videos-analysis-results', 'chat-section');
                 analysisResults = message.data.individual_results;
                 transcripts = message.data.transcripts;
+                showFollowupQuestionsLoading();
+                sendMessage('generate_followup_questions', { transcripts: transcripts }, currentButton);
+                break;
+            case 'followup_questions':
+                hideFollowupQuestionsLoading();
+                displayFollowupQuestions(message.data.questions);
                 break;
             case 'error':
                 displayError(message.data);
@@ -122,6 +128,48 @@ document.addEventListener("DOMContentLoaded", function () {
                 } else {
                     console.warn('Unhandled message on the websocket:', message.message);
                 }
+        }
+    }
+
+    function displayFollowupQuestions(questions) {
+        const followupQuestionsContainer = document.getElementById('followup-questions-container');
+        if (followupQuestionsContainer) {
+            followupQuestionsContainer.innerHTML = '<h5>Suggested Follow-up Questions</h5>';
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'suggestions-buttons-container';
+            questions.forEach((question) => {
+                const button = document.createElement('button');
+                button.className = 'suggestion-button';
+                button.setAttribute('data-question', question.question);
+                button.textContent = question.question;
+                button.addEventListener('click', function () {
+                    const questionText = this.getAttribute('data-question');
+                    sendSuggestionToChat(questionText);
+                });
+                buttonsContainer.appendChild(button);
+            });
+            followupQuestionsContainer.appendChild(buttonsContainer);
+            showAccordion('followup-questions-card');
+        }
+    }
+    
+    function sendSuggestionToChat(question) {
+        displayChatMessage('You', question);
+        sendMessage('ask_question', { question: question, analysisResults: analysisResults, transcripts: transcripts, chat_history: chatHistory }, sendChatButton);
+    }   
+    
+    function showFollowupQuestionsLoading() {
+        const followupQuestionsContainer = document.getElementById('followup-questions-container');
+        if (followupQuestionsContainer) {
+            followupQuestionsContainer.innerHTML = '<span aria-busy="true">Generating suggestions...</span>';
+            showAccordion('followup-questions-card');
+        }
+    }
+    
+    function hideFollowupQuestionsLoading() {
+        const followupQuestionsContainer = document.getElementById('followup-questions-container');
+        if (followupQuestionsContainer) {
+            followupQuestionsContainer.innerHTML = '';
         }
     }
 

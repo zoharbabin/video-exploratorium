@@ -30,6 +30,12 @@ class CrossVideoInsights(BaseModel):
     opposing_views: List[str] = Field(description="Opposing views across videos. Up to 2 sentence long per opposing view.")
     sentiments: List[str] = Field(description="Sentiments across the videos. Up to 1 sentence per sentiment.")
 
+class FollowupQuestion(BaseModel):
+    question: str = Field(description="A suggested follow-up question based on the analyzed video transcripts.")
+
+class FollowupQuestionsResponse(BaseModel):
+    questions: List[FollowupQuestion] = Field(description="A list of suggested follow-up questions.")
+
 class QAResponse(BaseModel):
     answer: str = Field(description="The answer to the user's question based on the provided videos context.")
 
@@ -157,4 +163,28 @@ def answer_question_pp(question: str, analysis_results: List[VideoSummary], tran
 
         {{ question }}
         
+    """
+
+@Prompter(llm="bedrock", model_name="anthropic.claude-3-sonnet-20240229-v1:0", jinja=True, model_settings={
+    "max_tokens": 4096,
+    "temperature": 0.9,
+    "top_p": 0.999,
+    "top_k": 1
+})
+def generate_followup_questions_pp(transcripts: List[str]) -> FollowupQuestionsResponse:
+    """
+    - user:
+        - user:
+        Below are the transcripts of the analyzed video(s). Your task is to generate follow-up questions based on these transcripts.
+        
+        ## Guidelines:
+        1. Provide a list of suggested follow-up questions based on the provided transcripts.
+        2. Ensure that at least one of the questions is a forward-looking action based on the video content. Examples could include drafting a follow-up email, creating a summary of action items, or planning next steps.
+        3. Be creative, this is an opportunity to engage the user and encourage further discussion.
+        4. Be future-oriented, think about what the next steps could be based on the video content.
+        5. Provide up to 4 suggesions, each up to 1 or 2 short sentences.
+
+        ## Transcripts:
+
+        {{ transcripts }}
     """

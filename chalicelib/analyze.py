@@ -1,8 +1,10 @@
 import json
 import traceback
-from chalicelib.kaltura_utils import get_english_captions, get_json_transcript
-from chalicelib.prompters import analyze_chunk_pp, combine_chunk_analyses_pp, cross_video_insights_pp, VideoSummary, CrossVideoInsights
 from chalicelib.utils import logger, send_ws_message
+from chalicelib.kaltura_utils import get_english_captions, get_json_transcript
+from chalicelib.prompters import (  generate_followup_questions_pp, analyze_chunk_pp,
+                                    combine_chunk_analyses_pp, cross_video_insights_pp, 
+                                    VideoSummary, CrossVideoInsights, FollowupQuestionsResponse )
 
 def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
     try:
@@ -110,5 +112,18 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
 
     except Exception as e:
         logger.error(f"Error during video analysis: {e}")
+        logger.error(traceback.format_exc())
+        send_ws_message(app, connection_id, request_id, 'error', str(e))
+
+def generate_followup_questions_ws(app, connection_id, request_id, transcripts):
+    try:
+        logger.info(f"Generating follow-up questions for analyzed videos.")
+        transcripts_list = [json.dumps(segment) for segments in transcripts.values() for segment in segments]
+        followup_questions_response: FollowupQuestionsResponse = generate_followup_questions_pp(transcripts=transcripts_list)
+        followup_questions_dict = followup_questions_response.model_dump()
+        logger.debug(f"Follow-up questions: {followup_questions_dict}")
+        send_ws_message(app, connection_id, request_id, 'followup_questions', followup_questions_dict)
+    except Exception as e:
+        logger.error(f"Error during generating follow-up questions: {e}")
         logger.error(traceback.format_exc())
         send_ws_message(app, connection_id, request_id, 'error', str(e))
