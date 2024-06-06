@@ -175,14 +175,14 @@ def generate_followup_questions_pp(transcripts: List[str]) -> FollowupQuestionsR
     """
     - user:
         - user:
-        Below are the transcripts of the analyzed video(s). Your task is to generate follow-up questions based on these transcripts.
+        Below are the transcripts of the analyzed video(s). Your task is to generate follow-up questions to the LLM.
         
         ## Guidelines:
         1. Provide a list of suggested follow-up questions based on the provided transcripts.
         2. Ensure that at least one of the questions is a forward-looking action based on the video content. Examples could include drafting a follow-up email, creating a summary of action items, or planning next steps.
         3. Be creative, this is an opportunity to engage the user and encourage further discussion.
-        4. Be future-oriented, think about what the next steps could be based on the video content.
-        5. Provide up to 4 suggesions, each up to 1 or 2 short sentences.
+        4. Provide up to 4 suggesions, each up to 1 or 2 short sentences. 
+        5. The user will click on these questions to submit them to the LLM for answering.
 
         ## Transcripts:
 
