@@ -471,7 +471,7 @@ document.addEventListener("DOMContentLoaded", function () {
         sendChatButton.addEventListener('click', function () {
             const question = chatInput.value.trim();
             displayChatMessage('You', question);
-            sendMessage('ask_question', { question: question, analysisResults: analysisResults, transcripts: transcripts, chat_history: chatHistory }, sendChatButton);
+            sendMessage('ask_question', { question: question, transcripts: transcripts, chat_history: chatHistory }, sendChatButton);
             chatInput.value = ''; // Clear the input field
         });
     } else {

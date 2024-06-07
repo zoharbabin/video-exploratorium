@@ -129,7 +129,7 @@ def cross_video_insights_pp(analysis_results: List[str]) -> CrossVideoInsights:
     "temperature": 0.3,
     "top_p": 0.999
 })
-def answer_question_pp(question: str, analysis_results: List[VideoSummary], transcripts: List[str], prior_chat_messages: List[str]) -> QAResponse:
+def answer_question_pp(question: str, transcripts: List[str], prior_chat_messages: List[str]) -> QAResponse:
     """
     - user:
         Below are summaries and transcripts of one or multiple videos, Chat history and the user's input question.

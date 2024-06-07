@@ -63,10 +63,9 @@ def websocket_handler(event: WebsocketEvent, app):
                 
             elif action == 'ask_question':
                 question = message.get('question', 'Can you create a list of exploratory questions for these videos?')
-                analysis_results = message.get('analysisResults', [])
                 transcripts = message.get('transcripts', []) 
                 prior_chat_messages = message.get('chat_history', []) 
-                response = answer_question_pp(question=question, analysis_results=analysis_results, transcripts=transcripts, prior_chat_messages=prior_chat_messages)
+                response = answer_question_pp(question=question, transcripts=transcripts, prior_chat_messages=prior_chat_messages)
                 send_ws_message(app, connection_id, request_id, 'chat_response', response.model_dump(), pid)
                 
         finally:
