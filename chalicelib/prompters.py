@@ -126,7 +126,7 @@ def cross_video_insights_pp(analysis_results: List[str]) -> CrossVideoInsights:
 
 @Prompter(llm="bedrock", model_name="anthropic.claude-3-sonnet-20240229-v1:0", jinja=True, model_settings={
     "max_tokens": 4096,
-    "temperature": 0.6,
+    "temperature": 0.3,
     "top_p": 0.999
 })
 def answer_question_pp(question: str, analysis_results: List[VideoSummary], transcripts: List[str], prior_chat_messages: List[str]) -> QAResponse:
