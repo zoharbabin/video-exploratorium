@@ -72,16 +72,6 @@ img.thumbnail-img {
     border-bottom: var(--pico-color-indigo-300) 0.05em dashed;
     margin-bottom: 2px;   
 }
-.chat-response p {
-    margin: 0;
-    margin-bottom: 2px;
-    padding: 0;
-}
-.chat-response ol, .chat-response ul {
-    margin: 0;
-    margin-bottom: 6px;
-    padding: 0;
-}
 #individual-videos-summary-content ul {
     display: flex;
     flex-direction: column;

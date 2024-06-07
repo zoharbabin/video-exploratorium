@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     let socket;
     let currentButton = null;
-    const chatSection = document.getElementById('chat-section');
     const chatContainer = document.getElementById('chat-container');
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -521,58 +520,20 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             const messageElement = document.createElement('div');
             messageElement.className = 'chat-message';
-            messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            messageElement.innerHTML = `<strong>${sender}:</strong><p>${message}</p>`;
             chatMessages.appendChild(messageElement);
             chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
             chatHistory.push({ sender: sender, message: message }); // Add message to chat history
         }
     }
 
-    function renderChatResponse(answerText) {
+    function renderChatResponse(markdownInput) {
         // Create a container for the rendered content
         const container = document.createElement('div');
         container.className = 'chat-response';
 
-        // Split the answer text into lines
-        const lines = answerText.split('\n');
-
-        // Determine the content type and render appropriately
-        let currentList = null;
-        let currentListType = null;
-
-        lines.forEach(line => {
-            const trimmedLine = line.trim();
-            if (trimmedLine.match(/^\d+\.\s+/) || trimmedLine.startsWith('* ')) {
-                // Determine list type
-                const isOrderedList = trimmedLine.match(/^\d+\.\s+/);
-                const listType = isOrderedList ? 'ol' : 'ul';
-
-                // Create a new list if the list type has changed or there is no current list
-                if (!currentList || currentListType !== listType) {
-                    currentList = document.createElement(listType);
-                    container.appendChild(currentList);
-                    currentListType = listType;
-                }
-
-                // Create a list item
-                const li = document.createElement('li');
-                li.textContent = trimmedLine.replace(/^\d+\.\s*/, '').replace(/^\*\s*/, '');
-                currentList.appendChild(li);
-            } else if (trimmedLine === '') {
-                // Reset the list if an empty line is encountered
-                currentList = null;
-                currentListType = null;
-            } else {
-                // Create a paragraph for any other text
-                if (currentList) {
-                    currentList = null;
-                    currentListType = null;
-                }
-                const p = document.createElement('p');
-                p.textContent = trimmedLine;
-                container.appendChild(p);
-            }
-        });
+        const htmlOutput = marked.parse(markdownInput);
+        container.innerHTML = htmlOutput;
 
         // Append "LLM:" to the answer text
         const llmIndicator = document.createElement('strong');
@@ -583,7 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
         chatMessages.appendChild(container);
         chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
     }
-
+    
     hideAccordion('videos-card');
     hideAccordion('progress-section');
     hideAccordion('individual-videos-analysis-results');
