@@ -2,9 +2,10 @@ import json
 import traceback
 from chalicelib.utils import logger, send_ws_message
 from chalicelib.kaltura_utils import get_english_captions, get_json_transcript
-from chalicelib.prompters import (  generate_followup_questions_pp, analyze_chunk_pp,
-                                    combine_chunk_analyses_pp, cross_video_insights_pp, 
-                                    VideoSummary, CrossVideoInsights, FollowupQuestionsResponse )
+from chalicelib.prompters import (generate_followup_questions_pp, analyze_chunk_pp,
+                                  combine_chunk_analyses_pp, cross_video_insights_pp,
+                                  VideoSummary, CrossVideoInsights, FollowupQuestionsResponse)
+
 
 def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
     try:
@@ -27,7 +28,6 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                     logger.error(f"No caption content found for caption ID: {caption['id']}")
                     continue
 
-                # Collect the full transcript
                 all_transcripts[video_id] = segmented_transcript
 
                 chunk_summaries = []
@@ -55,16 +55,6 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                     try:
                         total_chunks = len(chunk_summaries)
                         if total_chunks > 1:
-                            for i, chunk_summary in enumerate(chunk_summaries):
-                                try:
-                                    json_data = chunk_summary.model_dump_json()
-                                    json.loads(json.dumps(json_data))
-                                    logger.info(f"Valid JSON Chunk Summary {i + 1}/{total_chunks}")
-                                except Exception as e:
-                                    logger.error(f"Invalid JSON in chunk summary {i + 1}/{total_chunks}: {e}")
-                                    logger.debug(f"Chunk Summary {i + 1}/{total_chunks}: {json.dumps(json_data)}")
-                                    continue
-
                             chunk_summaries_json = [summary.model_dump_json() for summary in chunk_summaries]
                             logger.info(f"Creating a combined analysis across chunks for video ID {video_id}")
                             combined_summary: VideoSummary = combine_chunk_analyses_pp(chunk_summaries=chunk_summaries_json)
@@ -114,6 +104,7 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
         logger.error(f"Error during video analysis: {e}")
         logger.error(traceback.format_exc())
         send_ws_message(app, connection_id, request_id, 'error', str(e))
+
 
 def generate_followup_questions_ws(app, connection_id, request_id, transcripts):
     try:

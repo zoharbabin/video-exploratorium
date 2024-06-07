@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function () {
             ks: params.get('ks')
         };
     }
-    
+
     const reloadFollowupQuestionsButton = document.getElementById('reload-followup-questions');
     if (reloadFollowupQuestionsButton) {
         reloadFollowupQuestionsButton.originalText = reloadFollowupQuestionsButton.textContent;
@@ -101,12 +101,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             case 'chunk_progress':
                 // Handle gradual analysis progress: a chunk of a single video complete
+                updateProgress(message);
                 break;
             case 'combined_summary':
                 // Handle gradual analysis progress: single video all chunks complete
+                updateProgress(message);
                 break;
             case 'cross_video_insights':
                 // Handle gradual analysis progress: cross videos complete (combined summary)
+                updateProgress(message);
                 break;
             case 'completed':
                 // Handle final analysis results (the whole process is complete and full results are available):
@@ -119,6 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     openAccordionsByIds('individual-videos-analysis-results', 'chat-section');
                 analysisResults = message.data.individual_results;
                 transcripts = message.data.transcripts;
+                hideAccordion('progress-section');
                 generateFollowupQuestions(transcripts);
                 break;
             case 'followup_questions':
@@ -148,6 +152,21 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function updateProgress(message) {
+        const progressBar = document.getElementById('progress-bar');
+        const progressInsights = document.getElementById('progress-insights');
+        
+        if (message.stage === 'chunk_progress') {
+            const { video_id, chunk_index, total_chunks, total_videos } = message.data;
+            const progress = ((chunk_index / total_chunks) / total_videos) * 100;
+            progressBar.value = progress;
+            progressInsights.innerHTML = `Processed chunk ${chunk_index} of ${total_chunks} for video ${video_id}`;
+        } else if (message.stage === 'combined_summary' || message.stage === 'cross_video_insights') {
+            progressBar.value = 100;
+            progressInsights.innerHTML = `Completed analysis for video ${message.data.entry_id}`;
+        }
+    }
+
     function displayFollowupQuestions(questions) {
         const followupQuestionsContainer = document.getElementById('followup-questions-content');
         if (followupQuestionsContainer) {
@@ -169,12 +188,12 @@ document.addEventListener("DOMContentLoaded", function () {
             showAccordion('followup-questions-card');
         }
     }
-    
+
     function sendSuggestionToChat(question) {
         displayChatMessage('You', question);
         sendMessage('ask_question', { question: question, analysisResults: analysisResults, transcripts: transcripts, chat_history: chatHistory }, sendChatButton);
-    }   
-    
+    }
+
     function showFollowupQuestionsLoading() {
         const followupQuestionsContainer = document.getElementById('followup-questions-content');
         if (followupQuestionsContainer) {
@@ -182,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
             showAccordion('followup-questions-card');
         }
     }
-    
+
     function generateUUID() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             const r = (Math.random() * 16) | 0,
@@ -194,10 +213,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function displayError(errorData) {
         const errorsCard = document.getElementById('errors-card');
         const errorList = document.getElementById('error-list');
-    
+
         if (errorsCard && errorList) {
             let errorHTML = '';
-    
+
             if (typeof errorData === 'string') {
                 errorHTML += `<li>${errorData}</li>`;
             } else if (typeof errorData === 'object') {
@@ -209,13 +228,13 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 errorHTML += '<li>An unknown error occurred.</li>';
             }
-    
+
             errorList.innerHTML = errorHTML;
             showAccordion('errors-card');
         } else {
             console.error('Error card or error list element not found');
         }
-    }    
+    }
 
     function displayVideos(videos) {
         const videoList = document.getElementById('video-list-items');
@@ -259,26 +278,26 @@ document.addEventListener("DOMContentLoaded", function () {
         if (text.length <= maxLength) {
             return text;
         }
-        
+
         let truncated = text.slice(0, maxLength);
         const lastPeriodIndex = truncated.lastIndexOf('.');
         const lastSpaceIndex = truncated.lastIndexOf(' ');
-    
+
         if (lastPeriodIndex !== -1 && lastPeriodIndex + 1 <= maxLength) {
             return truncated.slice(0, lastPeriodIndex + 1) + '...';
         }
-        
+
         if (lastSpaceIndex !== -1 && lastSpaceIndex <= maxLength) {
             return truncated.slice(0, lastSpaceIndex) + '...';
         }
-        
+
         // If no period or space is found, cut off at the max length, ensuring it does not cut in the middle of a word
         truncated = text.slice(0, maxLength);
         const lastWordBoundaryIndex = truncated.lastIndexOf(' ');
         if (lastWordBoundaryIndex !== -1) {
             return truncated.slice(0, lastWordBoundaryIndex) + '...';
         }
-        
+
         return truncated + '...';
     }
 
@@ -364,6 +383,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 alert('Please select at least one video to analyze.');
                 return;
             }
+            closeAllAccordions();
+            showAccordion('progress-section');
             sendMessage('analyze_videos', { selectedVideos }, this);
         });
     } else {
@@ -448,7 +469,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
         console.error('Search videos button not found');
     }
-    
+
     const sendChatButton = document.getElementById('send-chat-button');
     if (sendChatButton) {
         sendChatButton.originalText = sendChatButton.textContent;
@@ -469,7 +490,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 handleGetVideos();
             } else if (document.activeElement === chatInput) {
                 event.preventDefault();
-                sendChatButton.click();            
+                sendChatButton.click();
             }
         }
     });
@@ -491,28 +512,28 @@ document.addEventListener("DOMContentLoaded", function () {
         if (accordion) {
             accordion.style.display = 'block';
             accordion.setAttribute('open', 'open');
-            
+
             // Find the next <hr /> element and set its display to 'block'
             const nextHr = accordion.nextElementSibling;
             if (nextHr && nextHr.tagName.toLowerCase() === 'hr') {
                 nextHr.style.display = 'block';
             }
         }
-    }    
+    }
 
     function hideAccordion(id) {
         const accordion = document.getElementById(id);
         if (accordion) {
             accordion.style.display = 'none';
             accordion.removeAttribute('open');
-    
+
             // Find the next <hr /> element and set its display to 'none'
             const nextHr = accordion.nextElementSibling;
             if (nextHr && nextHr.tagName.toLowerCase() === 'hr') {
                 nextHr.style.display = 'none';
             }
         }
-    }    
+    }
 
     function displayChatMessage(sender, message) {
         if (sender === 'LLM') {
@@ -544,7 +565,7 @@ document.addEventListener("DOMContentLoaded", function () {
         chatMessages.appendChild(container);
         chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
     }
-    
+
     hideAccordion('videos-card');
     hideAccordion('progress-section');
     hideAccordion('individual-videos-analysis-results');
