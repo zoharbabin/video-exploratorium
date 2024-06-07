@@ -44,10 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function getUrlParams() {
         const params = new URLSearchParams(window.location.search);
-        return {
-            pid: params.get('pid'),
-            ks: params.get('ks')
-        };
+        return params.get('ks');
     }
 
     const reloadFollowupQuestionsButton = document.getElementById('reload-followup-questions');
@@ -66,10 +63,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function sendMessage(action, data, button) {
-        const { pid, ks } = getUrlParams();
-        if (!pid || !ks) {
-            console.error('PID and KS parameters are required');
-            showStatus('pid and ks URL parameters are required!', 'danger');
+        const ks = getUrlParams();
+        if (!ks) {
+            console.error('Valid ks in the URL parameter is required');
+            showStatus('Valid ks (Kaltura Session) in the URL parameter is required!', 'danger');
             return;
         }
 
@@ -77,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
             action: action,
             request_id: generateUUID(),
             headers: {
-                'X-Authentication': `${pid}:${ks}`
+                'X-Authentication': `${ks}`
             },
             ...data
         };
@@ -94,7 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
         switch (message.stage) {
             case 'videos':
                 // Handle search videos list results
-                displayVideos(message.data);
+                displayVideos(message.data, message.pid);
                 stopLoadingIndicator();
                 closeAllAccordions();
                 openAccordionsByIds('videos-card');
@@ -113,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             case 'completed':
                 // Handle final analysis results (the whole process is complete and full results are available):
-                let crossIncluded = displayFinalResults(message.data);
+                let crossIncluded = displayFinalResults(message.data, message.pid);
                 stopLoadingIndicator();
                 closeAllAccordions();
                 if (crossIncluded)
@@ -236,9 +233,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function displayVideos(videos) {
+    function displayVideos(videos, pid) {
         const videoList = document.getElementById('video-list-items');
-        const { pid } = getUrlParams();
         if (videoList) {
             videoList.innerHTML = '';
             videos.forEach(video => {
@@ -308,7 +304,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return `${h}:${m}:${s}`;
     }
 
-    function displayFinalResults(data) {
+    function displayFinalResults(data, pid) {
         const analysisResults = document.getElementById('individual-videos-analysis-results');
         showAccordion('individual-videos-analysis-results');
 
@@ -324,12 +320,12 @@ document.addEventListener("DOMContentLoaded", function () {
         navbar.querySelectorAll('button').forEach(button => {
             button.addEventListener('click', function () {
                 const index = this.getAttribute('data-index');
-                displayVideoResult(data.individual_results[index]);
+                displayVideoResult(data.individual_results[index], pid);
             });
         });
 
         // Display the first video result by default
-        displayVideoResult(data.individual_results[0]);
+        displayVideoResult(data.individual_results[0], pid);
 
         if (data.cross_video_insights) {
             const crossVideoInsights = data.cross_video_insights;
@@ -391,8 +387,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error('Analyze Selected Videos button not found');
     }
 
-    function displayVideoResult(result) {
-        const { pid } = getUrlParams();
+    function displayVideoResult(result, pid) {
         let resultHTML = `
             <h4>Video Entry: ${result.entry_id}</h4>
             <p><strong>Full Summary:</strong> ${result.full_summary}</p>

@@ -46,7 +46,7 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                             'chunk_index': index + 1,
                             'total_chunks': total_chunks,
                             'total_videos': total_videos
-                        })
+                        }, pid)
                     except Exception as e:
                         logger.error(f"Error during chunk analysis for video ID {video_id}, chunk {index + 1}: {e}")
                         logger.error(traceback.format_exc())
@@ -62,12 +62,12 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                             combined_summary_json = combined_summary.model_dump_json()
                             logger.info(f"Combined chunk analysis result for video ID {video_id}: {combined_summary_json[:500]}...{combined_summary_json[-500:]}")
                             all_analysis_results.append(combined_summary_dict)
-                            send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_json)
+                            send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_json, pid)
                         else:
                             logger.info(f"Only one chunk found for video ID {video_id}, skipping combining analysis.")
                             combined_summary_dict = chunk_summaries[0].model_dump()
                             all_analysis_results.append(combined_summary_dict)
-                            send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_dict)
+                            send_ws_message(app, connection_id, request_id, 'combined_summary', combined_summary_dict, pid)
                     except Exception as e:
                         logger.error(f"Error during combining chunk analyses for video ID {video_id}: {e}")
                         logger.error(traceback.format_exc())
@@ -76,7 +76,7 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
         
         if not all_analysis_results:
             logger.error("No analysis results found.")
-            send_ws_message(app, connection_id, request_id, 'error', 'No analysis results found')
+            send_ws_message(app, connection_id, request_id, 'error', 'No video transcript was found', pid)
             return
 
         response = {
@@ -92,29 +92,29 @@ def analyze_videos_ws(app, connection_id, request_id, selected_videos, ks, pid):
                 cross_video_insights_dict = cross_video_insights.model_dump()
                 logger.debug(f"Cross video insights result: {cross_video_insights_dict}")
                 response["cross_video_insights"] = cross_video_insights_dict
-                send_ws_message(app, connection_id, request_id, 'cross_video_insights', cross_video_insights_dict)
+                send_ws_message(app, connection_id, request_id, 'cross_video_insights', cross_video_insights_dict, pid)
             except Exception as e:
                 logger.error(f"Error during cross video insights analysis: {e}")
                 logger.error(traceback.format_exc())
 
         logger.info("Video analysis complete")
-        send_ws_message(app, connection_id, request_id, 'completed', response)
+        send_ws_message(app, connection_id, request_id, 'completed', response, pid)
 
     except Exception as e:
         logger.error(f"Error during video analysis: {e}")
         logger.error(traceback.format_exc())
-        send_ws_message(app, connection_id, request_id, 'error', str(e))
+        send_ws_message(app, connection_id, request_id, 'error', str(e), pid)
 
 
-def generate_followup_questions_ws(app, connection_id, request_id, transcripts):
+def generate_followup_questions_ws(app, connection_id, request_id, transcripts, pid):
     try:
         logger.info(f"Generating follow-up questions for analyzed videos.")
         transcripts_list = [json.dumps(segment) for segments in transcripts.values() for segment in segments]
         followup_questions_response: FollowupQuestionsResponse = generate_followup_questions_pp(transcripts=transcripts_list)
         followup_questions_dict = followup_questions_response.model_dump()
         logger.debug(f"Follow-up questions: {followup_questions_dict}")
-        send_ws_message(app, connection_id, request_id, 'followup_questions', followup_questions_dict)
+        send_ws_message(app, connection_id, request_id, 'followup_questions', followup_questions_dict, pid)
     except Exception as e:
         logger.error(f"Error during generating follow-up questions: {e}")
         logger.error(traceback.format_exc())
-        send_ws_message(app, connection_id, request_id, 'error', str(e))
+        send_ws_message(app, connection_id, request_id, 'error', str(e), pid)

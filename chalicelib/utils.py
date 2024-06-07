@@ -72,12 +72,13 @@ def send_ws_error_message(websocket_api, connection_id, request_id, error_messag
     except WebsocketDisconnectedError:
         logger.error(f"Client {connection_id} disconnected", extra={'connection_id': connection_id})
 
-def send_ws_message(app, connection_id, request_id, stage, data):
+def send_ws_message(app, connection_id, request_id, stage, data, pid):
     try:
         message = json.dumps({
             'request_id': request_id,
             'stage': stage,
-            'data': data
+            'data': data,
+            'pid': pid
         })
         app.websocket_api.send(connection_id, message)
     except WebsocketDisconnectedError:

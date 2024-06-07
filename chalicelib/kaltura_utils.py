@@ -17,7 +17,7 @@ from KalturaClient.Plugins.ElasticSearch import (
     KalturaESearchCategoryEntryItem, KalturaESearchCategoryEntryFieldName, KalturaCategoryEntryStatus, KalturaESearchUnifiedItem
 )
 from chalicelib.config import config
-from chalicelib.utils import logger, send_ws_message
+from chalicelib.utils import logger
 from chalicelib.transcript_utils import chunk_transcript
 
 class KalturaLogger(IKalturaLogger):
@@ -85,29 +85,24 @@ class CustomKalturaClient(KalturaClient):
     def doHttpRequest(self, url, params=KalturaParams(), files=None):
         return self.retry_on_exception(super().doHttpRequest, url, params, files)
 
-def get_kaltura_client(ks, pid):
-    config_kaltura = KalturaConfiguration(pid)
+def get_kaltura_client(ks):
+    config_kaltura = KalturaConfiguration()
     config_kaltura.serviceUrl = config.service_url
     config_kaltura.setLogger(KalturaLogger())
     client = CustomKalturaClient(config_kaltura, max_retries=1, delay=1, backoff=1)
     client.setKs(ks)
     return client
 
-def validate_ks(ks, pid):
+def validate_ks(ks):
     try:
-        start_time = time.time()
-        client = get_kaltura_client(ks, pid)
-        client_creation_time = time.time()
+        client = get_kaltura_client(ks)
         session_info: KalturaSessionInfo = client.session.get()
-        session_info_time = time.time()
-        is_pid_valid = int(session_info.partnerId) - int(pid) == 0
-        current_time = time.time()
-        is_ks_not_expired = session_info.expiry > current_time
+        is_ks_not_expired = session_info.expiry > time.time()
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
-        logger.debug(f"Validating Kaltura session: pid: {is_pid_valid} [{pid}/{session_info.partnerId}], ks_expiry_valid: {is_ks_not_expired} / masked_ks: {masked_ks}")
-        logger.info(f"Time taken: client creation {client_creation_time - start_time}s, session info {session_info_time - client_creation_time}s")
-
-        return is_pid_valid and is_ks_not_expired
+        logger.debug(f"Validating Kaltura session: pid: {int(session_info.partnerId)}, ks_expiry_valid: {is_ks_not_expired} / masked_ks: {masked_ks}")
+        
+        return is_ks_not_expired, int(session_info.partnerId)
+    
     except Exception as e:
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
         logger.error(f"Invalid Kaltura session (KS): {masked_ks}, Error: {e}")
@@ -115,7 +110,7 @@ def validate_ks(ks, pid):
         return False
 
 def get_english_captions(entry_id, ks, pid):
-    client = get_kaltura_client(ks, pid)
+    client = get_kaltura_client(ks)
     logger.debug(f"Fetching captions for entry ID: {entry_id}")
     caption_filter = KalturaCaptionAssetFilter()
     caption_filter.entryIdEqual = entry_id
@@ -128,7 +123,7 @@ def get_english_captions(entry_id, ks, pid):
     return captions
 
 def fetch_videos(ks, pid, category_ids=None, free_text=None, number_of_videos=6):
-    client = get_kaltura_client(ks, pid)
+    client = get_kaltura_client(ks)
     search_params = KalturaESearchEntryParams()
     search_params.orderBy = KalturaESearchOrderBy()
     order_item = KalturaESearchEntryOrderByItem()
@@ -194,7 +189,7 @@ def fetch_videos(ks, pid, category_ids=None, free_text=None, number_of_videos=6)
 
 def get_json_transcript(caption_asset_id, ks, pid):
     try:
-        client = get_kaltura_client(ks, pid)
+        client = get_kaltura_client(ks)
         cap_json_url = client.caption.captionAsset.serveAsJson(caption_asset_id)
         logger.debug(f"Caption JSON URL: {cap_json_url}")
         response = requests.get(cap_json_url)
