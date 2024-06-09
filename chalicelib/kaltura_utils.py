@@ -7,7 +7,7 @@ from lxml import etree
 from KalturaClient import KalturaClient, KalturaConfiguration
 from KalturaClient.Base import IKalturaLogger, KalturaParams, getXmlNodeFloat
 from KalturaClient.exceptions import KalturaClientException, KalturaException
-from KalturaClient.Plugins.Core import KalturaSessionType, KalturaFilterPager, KalturaMediaType, KalturaSessionInfo
+from KalturaClient.Plugins.Core import KalturaBaseEntryFilter, KalturaFilterPager, KalturaMediaType, KalturaSessionInfo
 from KalturaClient.Plugins.Caption import KalturaCaptionAssetFilter, KalturaCaptionAssetOrderBy, KalturaLanguage
 from KalturaClient.Plugins.ElasticSearch import (
     KalturaESearchEntryParams, KalturaESearchEntryOperator, KalturaESearchOperatorType,
@@ -96,12 +96,16 @@ def get_kaltura_client(ks):
 def validate_ks(ks):
     try:
         client = get_kaltura_client(ks)
-        session_info: KalturaSessionInfo = client.session.get()
-        is_ks_not_expired = session_info.expiry > time.time()
+        filter = KalturaBaseEntryFilter()
+        pager = KalturaFilterPager()
+        pager.pageIndex = 1
+        pager.pageSize = 1
+        entries = client.baseEntry.list(filter, pager)
+        is_ks_valid = (entries.totalCount > 0)
+        pid = entries.objects[0].partnerId
         masked_ks = f"{ks[:5]}...{ks[-5:]}"
-        logger.debug(f"Validating Kaltura session: pid: {int(session_info.partnerId)}, ks_expiry_valid: {is_ks_not_expired} / masked_ks: {masked_ks}")
-        pid = int(session_info.partnerId)
-        return is_ks_not_expired, pid
+        logger.debug(f"Validating Kaltura session: pid: {pid}, is_ks_valid: {is_ks_valid} / masked_ks: {masked_ks}")
+        return is_ks_valid, pid
     
     except Exception as e:
         masked_ks = f"{ks[:5]}...{ks[-5:]}"

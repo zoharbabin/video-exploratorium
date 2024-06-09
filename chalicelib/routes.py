@@ -87,7 +87,6 @@ def extract_and_validate_auth_ws(headers):
     if not auth_header:
         raise ValueError('X-Authentication header is required')
 
-    ks = parse_auth_header(auth_header)
     validate_start_time = time.time()
     ks = parse_auth_header(auth_header)
     ks_valid, pid = validate_ks(ks)
