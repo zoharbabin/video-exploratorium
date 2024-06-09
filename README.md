@@ -21,6 +21,38 @@ This project makes use of AWS Bedrock APIs to interact with the Claude 3 Sonnet 
 * Market Research: Extract key messages and understand audience engagement from videos.
 * Content Management: Manage large video libraries with automatic summaries and insights.
 
+## Flow chart
+
+```mermaid
+graph LR
+    %% End User Interactions
+    A1[End User] -->|WebSocket/HTTP Request| B1[API Gateway]
+
+    %% API Gateway Interactions
+    B1 -->|Routes Request| C1[AWS Lambda]
+
+    %% Lambda Interactions for Analyzing Videos
+    C1 -->|Fetch Videos| D1[Kaltura API]
+    D1 -->|Return Video Data| C1
+    C1 -->|Analyze Videos| D2[AWS Bedrock]
+    D2 -->|Return Analysis Results| C1
+
+    %% Lambda Interactions for Generating Follow-up Questions
+    C1 -->|Generate Questions| D3[AWS Bedrock]
+    D3 -->|Return Questions| C1
+
+    %% Lambda Interactions for Answering Questions
+    C1 -->|Answer Question| D4[AWS Bedrock]
+    D4 -->|Return Answer| C1
+
+    %% Lambda Interactions for Static File Deployment
+    C1 -->|Upload Files| E1[AWS S3]
+    C1 -->|Invalidate Cache| E2[AWS CloudFront]
+
+    %% Responses to End User
+    C1 -->|WebSocket/HTTP Response| A1
+```
+
 ### Future Expansions
 
 Future plans include integrating interactive video experiences with cue points and layers, and combining LLM insights with real-time chat exploration during video playback.
