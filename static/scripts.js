@@ -120,6 +120,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 analysisResults = message.data.individual_results;
                 transcripts = message.data.transcripts;
                 hideAccordion('progress-section');
+                resetProgress();
                 generateFollowupQuestions(transcripts);
                 break;
             case 'followup_questions':
@@ -149,6 +150,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function resetProgress() {
+        const progressBar = document.getElementById('progress-bar');
+        const progressInsights = document.getElementById('progress-insights');
+        progressBar.removeAttribute("value");
+        progressBar.removeAttribute("max");
+        progressInsights.innerHTML = '';
+    }
+
     function updateProgress(message) {
         const progressBar = document.getElementById('progress-bar');
         const progressInsights = document.getElementById('progress-insights');
@@ -158,9 +167,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const progress = ((chunk_index / total_chunks) / total_videos) * 100;
             progressBar.value = progress;
             progressInsights.innerHTML = `Processed chunk ${chunk_index} of ${total_chunks} for video ${video_id}`;
-        } else if (message.stage === 'combined_summary' || message.stage === 'cross_video_insights') {
-            progressBar.value = 100;
-            progressInsights.innerHTML = `Completed analysis for video ${message.data.entry_id}`;
         }
     }
 
@@ -380,6 +386,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             closeAllAccordions();
+            resetProgress();
             showAccordion('progress-section');
             sendMessage('analyze_videos', { selectedVideos }, this);
         });
