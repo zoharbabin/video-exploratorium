@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let chatHistory = []; // Array to hold chat messages
 
     function connectWebSocket() {
-        socket = new WebSocket('wss://fyocljsr02.execute-api.us-east-1.amazonaws.com/vidbot/');
+        socket = new WebSocket('wss://har90gdk9f.execute-api.us-east-1.amazonaws.com/vidbot/');
         showStatus('ᯤ connecting...', 'progress');
 
         socket.onopen = function () {
